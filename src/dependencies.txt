@@ -1,2 +1,0 @@
-Pkg.add(["DifferentialEquations","Plots","ProgressMeter","Distributions","ParameterizedFunctions","QuadGK","GSL","WignerSymbols","CSV","DataFrames","Tables","Revise","RecursiveArrayTools","SymEngine","DataStructures"])
-Pkg.add("Mamba")
