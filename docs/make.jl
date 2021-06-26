@@ -8,5 +8,5 @@ makedocs(
                 "Home" => "index.md"
                ])
 deploydocs(;
-    repo="github.com/USERNAME/VegaGraphs.jl",
+    repo="github.com/saulpila/Dicke.jl",
 )
