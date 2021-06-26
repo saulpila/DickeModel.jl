@@ -1,3 +1,4 @@
+**WORK IN PROGRESS....**
 # Dicke
 This package is a result of more than two years of investigation of the [Dicke Model](https://en.wikipedia.org/wiki/Dicke_model). It contains numerical methods that were used in the following publications: 
 
