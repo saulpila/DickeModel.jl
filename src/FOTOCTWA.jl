@@ -2,8 +2,8 @@ module FOTOCTWA
 
 export calculate_log_slope,functions_for_variance,variance
 
-    import TruncatedWignerApproximation
-    import ClassicalSystems
+    import ..TruncatedWignerApproximation
+    import ..ClassicalSystems
     using Statistics
     using LsqFit
     function calculate_log_slope(sistema;distribucion,vars,tf,sattime,deltat,N,returnall=false,kargs...)

@@ -7,9 +7,9 @@ module TruncatedWignerApproximation
     using ProgressMeter
     using DifferentialEquations
     using SymEngine
-    import ClassicalSystems
+    using ..ClassicalSystems
     using DataStructures
-    import PhaseSpaces
+    using ..PhaseSpaces
     function scale_to_index(v,r::LinRange)
             if v<r.start || r.stop <v
                 return NaN

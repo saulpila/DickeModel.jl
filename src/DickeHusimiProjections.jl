@@ -1,10 +1,10 @@
 module DickeHusimiProjections
 
 export ∫∫dqdpδε,proj_husimi_QP_matrix,loc_measure
-import DickeBCE
-import ClassicalSystems
+import ..DickeBCE
+import ..ClassicalSystems
 import Distributed
-import Dicke
+import ..ClassicalDicke
 using Statistics
 using Random
 import ProgressMeter
@@ -29,7 +29,7 @@ import ProgressMeter
             if onlyqroot!==nothing && onlyqroot!==signo
                 continue
             end
-            mf(p)=f(Dicke.Point(sistemaC,Q=Q,P=P,p=p,ε=ε,signo=signo))
+            mf(p)=f(ClassicalDicke.Point(sistemaC,Q=Q,P=P,p=p,ε=ε,signo=signo))
             for k in 1:n
                 mv= (π/(n*ω)) .* mf(p₊*cos(π*(2*k - 1)/(2n)))
                 if val===nonvalue
@@ -53,8 +53,8 @@ import ProgressMeter
         ex
     end
     function _generate_QPs(symmetricQP,symmetricP,res,sistema,ε)
-        minP=-ceil(Dicke.maximum_P_for_ε(sistema,ε)/res)*res
-        minQ=-ceil(Dicke.maximum_Q_for_ε(sistema,ε)/res)*res
+        minP=-ceil(ClassicalDicke.maximum_P_for_ε(sistema,ε)/res)*res
+        minQ=-ceil(ClassicalDicke.maximum_Q_for_ε(sistema,ε)/res)*res
 
         lastQ=-minQ
         lastP=-minP

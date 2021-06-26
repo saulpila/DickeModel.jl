@@ -1,22 +1,21 @@
 module DickeBCE
 
 export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerProjqp
-    import ClassicalSystems
+    import ..ClassicalSystems
     using LinearAlgebra
     using ProgressMeter
     using SparseArrays
     using Distributed
-    import PhaseSpaces
+    import ..PhaseSpaces
     using GSL
     using WignerSymbols
     using Distributed
     using CSV
-    using Dicke
+    using ..ClassicalDicke
     using Distributions
     import Random
     using Statistics
     using DataFrames,Tables
-    #using Memoize
     struct QuantumSystem
        params
     end
@@ -224,7 +223,7 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
     end
     function Jz(sistema::QuantumSystem)
         ω₀,ω,γ,j,Nmax=get_params(sistema)
-        return H_BCE(QuantumSystem(Dicke.ClassicalSystem(ω₀=1,ω=1,γ=1),j=j,Nmax=Nmax),_ignorediagonalterms=true)
+        return H_BCE(QuantumSystem(ClassicalDicke.ClassicalSystem(ω₀=1,ω=1,γ=1),j=j,Nmax=Nmax),_ignorediagonalterms=true)
     end
     function Jx(sistema::QuantumSystem)
         ω₀,ω,γ,j,Nmax=get_params(sistema)
@@ -261,9 +260,9 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
     end
     function RFactor(sistemaC::ClassicalSystems.ClassicalSystem,sistemaQ::QuantumSystem,x,state;eigenstates,eigenenergies,exact=false)
         ω₀,ω,γ,j,Nmax=get_params(sistemaQ)
-        ε=Dicke.hamiltonian(sistemaC)(x)
-        σ=Dicke.energy_width_of_coherent_state(sistemaC,x,j)
-        ν(ε)=Dicke.density_of_states(sistemaC,j=j,ε=ε)
+        ε=ClassicalDicke.hamiltonian(sistemaC)(x)
+        σ=ClassicalDicke.energy_width_of_coherent_state(sistemaC,x,j)
+        ν(ε)=ClassicalDicke.density_of_states(sistemaC,j=j,ε=ε)
         n=Distributions.Normal(ε,σ)
         ρ(ε)=Distributions.pdf(n,ε)
 
@@ -758,7 +757,7 @@ function _coherentOverlapOrCoherentState(sistemaQ::QuantumSystem,punto::Abstract
 
         ω₀,ω,γ,j,Nmax=get_params(sistemaQ)
         ρ(ε)=Distributions.pdf(envelope,ε)
-        ν(ε)=Dicke.density_of_states(sistemaC,j=j,ε=ε)
+        ν(ε)=ClassicalDicke.density_of_states(sistemaC,j=j,ε=ε)
         rₖ()=Distributions.rand(rₖ_distribution)
         rphase()=if phases==true || phases ==:complex
             exp(im*Random.rand()*2*pi)
@@ -847,7 +846,7 @@ function _coherentOverlapOrCoherentState(sistemaQ::QuantumSystem,punto::Abstract
             cachedata=zeros(Complex,(Int(2j)+1)*(Nmax))
         end
         cachedata.=0.0im
-        s=Dicke.classicalPathRandomSampler(sistemaC,ε=ε,dt=dt)
+        s=ClassicalDicke.classicalPathRandomSampler(sistemaC,ε=ε,dt=dt)
         for i in 1:N
             θ=rand()*2*π
             p=s()

@@ -1,15 +1,15 @@
 module UPOS
 
 export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_UPO_keep_P,fix_UPO_keep_energy
-    using ClassicalSystems
-    using Dicke
+    using ..ClassicalSystems
+    using ..ClassicalDicke
     using LinearAlgebra
     using DifferentialEquations
     using ProgressMeter
     using Plots
-    using PhaseSpaces
-    using DickeBCE
-    using DickeHusimiProjections
+    using ..PhaseSpaces
+    using ..DickeBCE
+    using ..DickeHusimiProjections
     Id=Matrix{Float64}(I, 4, 4);
     struct PO
         sistema::ClassicalSystem
@@ -163,7 +163,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     function search_in_interval(sistema,ε,Q=1,s=10000,ds=2;tol=1e-7,n=20,_start=true,refine=false)
         function f(Q,P,bound)
             try
-                return find_orbit(sistema,Dicke.Point(sistema,P=P,Q=Q,p=0.0,ε=ε),n=n,tol=1e-6,bound=bound,max_order=3)
+                return find_orbit(sistema,ClassicalDicke.Point(sistema,P=P,Q=Q,p=0.0,ε=ε),n=n,tol=1e-6,bound=bound,max_order=3)
             catch
                 return NaN,NaN
             end
@@ -521,8 +521,8 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         end
         return get
     end
-    family_A(sistemaC::ClassicalSystems.ClassicalSystem)=follow_UPO_family_energies(sistemaC,Dicke.minimum_energy_point(sistemaC,+),2*pi/Dicke.normal_frequency(sistemaC,+),Dicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
- family_B(sistemaC::ClassicalSystems.ClassicalSystem)=follow_UPO_family_energies(sistemaC,Dicke.minimum_energy_point(sistemaC,+),2*pi/Dicke.normal_frequency(sistemaC,-),Dicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
+    family_A(sistemaC::ClassicalSystems.ClassicalSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,+),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
+ family_B(sistemaC::ClassicalSystems.ClassicalSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,-),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
     function plot_PO_QP(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
         for po in F
 
@@ -532,7 +532,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
             plot!(p,[(i[1],i[3]) for i in us];xlabel="Q",ylabel="P",fontfamily="Times",opts...)
         end
         if H!=:nothing
-            contour!(range(-2,stop=2,length=100),range(-2,stop=2,length=100),(Q,P)->Dicke.minimum_ε_for(sis;Q=Q,P=P,p=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
+            contour!(range(-2,stop=2,length=100),range(-2,stop=2,length=100),(Q,P)->ClassicalDicke.minimum_ε_for(sis;Q=Q,P=P,p=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
         end
         return p
     end
@@ -556,7 +556,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         end
         if H!=:nothing
 
-            contour!(range(-4,stop=4,length=100),range(-2,stop=2,length=100),(q,p)->Dicke.minimum_ε_for(sis;q=q,p=p,P=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
+            contour!(range(-4,stop=4,length=100),range(-2,stop=2,length=100),(q,p)->ClassicalDicke.minimum_ε_for(sis;q=q,p=p,P=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
         end
         return p
     end
@@ -574,7 +574,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         orbit=integrate_PO(po,tol=time_integral_tolerance)
         ∫dtHtx(x)=average_over_PO(orbit,u-> DickeBCE.HusimiOfCoherent(sistemaQ,u,x))
         res=phase_space_integral_resolution
-        ε=Dicke.hamiltonian(po.sistema)(po.u)
+        ε=ClassicalDicke.hamiltonian(po.sistema)(po.u)
         insidepoints=0
         function f(Q,P)
             v=DickeHusimiProjections.∫∫dqdpδε(sistemaC=po.sistema,ε=ε,Q=Q,P=P,f=∫dtHtx,nonvalue=NaN,p_res=res)

@@ -6,7 +6,6 @@ using DifferentialEquations
 using ProgressMeter
 using RecursiveArrayTools
 using LinearAlgebra
-#using GenericLinearAlgebra
 
 struct ClassicalSystem
        params
