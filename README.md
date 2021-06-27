@@ -1,5 +1,9 @@
 **WORK IN PROGRESS....**
 # Dicke
+
+### Documentation: [here](https://saulpila.github.io/Dicke.jl/dev/)
+
+### Summary
 This package is a result of more than two years of investigation of the [Dicke Model](https://en.wikipedia.org/wiki/Dicke_model). It contains numerical methods that were used in the following publications: 
 
 1. *Quantum localization measures in phase space*.  
