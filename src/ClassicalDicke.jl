@@ -7,6 +7,16 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
     using ..TruncatedWignerApproximation
     using Mamba
     using QuadGK
+    """
+    ```julia
+    function hamiltonian(system::ClassicalSystems.ClassicalSystem)
+    ```
+    Returns a classical Hamiltonian function `h(x)` where `x=[Q,q,P,p]`, which is given by
+    Eq. (5) of [10.1088/1367-2630/abd2e6](https://doi.org/10.1088/1367-2630/abd2e6).
+
+    # Arguments:
+    - `system` is an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
+    """
     function hamiltonian(sistema::ClassicalSystems.ClassicalSystem)
         ω₀,ω,γ=sistema.params
         function H(u)
@@ -16,10 +26,35 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         end
         return H
     end
+    """
+    ```julia
+    function density_of_states(system::ClassicalSystems.ClassicalSystem;j,ε)
+    ```
+    Returns the semiclassical density of states (DoS) ``ν(ϵ)``, in units of ``1/ϵ``. This is computed
+    with an expression similar to Eq. (19) of [10.1103/PhysRevA.89.032101](https://doi.org/10.1103/PhysRevA.89.032101), where
+    we add an additional factor of ``j`` to have units of ``1/ϵ`` instead of ``1/E``, and the integral is performed
+    with a change of variable.
+
+    # Arguments:
+    - `system` is an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
+    - `j` is the value of ``j``
+    - `ε` is the scaled energy ``ϵ=E/j``
+    """
     function density_of_states(sistemaC::ClassicalSystems.ClassicalSystem;j,ε)
         ω₀,ω,γ=sistemaC.params
         energy_shell_volume(sistemaC,ε)*(j/(2pi))^2
     end
+
+    """
+    ```julia
+    function energy_shell_volume(system::ClassicalSystems.ClassicalSystem;ε)
+    ```
+    Returns the volume of the classical energy shell in the phase space, that is, ``\\mathcal{V}(\\mathcal{M}_ϵ)`` in Eq. (27) of [10.1103/PhysRevE.103.052214](https://doi.org/PhysRevE.103.052214).
+
+    # Arguments:
+    - `system` is an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
+    - `ε` is the scaled energy ``ϵ=E/j``
+    """
     function energy_shell_volume(sistemaC::ClassicalSystems.ClassicalSystem,ε)
         ω₀,ω,γ=sistemaC.params
         if ε>=ω₀
@@ -206,4 +241,5 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
              end
              return sample
          end
+
 end
