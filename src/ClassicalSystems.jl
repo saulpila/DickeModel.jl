@@ -23,6 +23,28 @@ function nvars(sistema::ClassicalSystem,vars...)
     return vs
 end
 eye(n)=Matrix(Diagonal(ones(n)))
+
+"""
+```julia
+function integrate(sistema::ClassicalSystem;t,
+                           u₀,
+                           t₀=0.0,
+                           tol=1e-12,
+                           show_progress=false,
+                           save_intermediate_steps=nothing,
+                           saveat=Array{Float64,1}(),
+                           cb=nothing,
+                           get_fundamental_matrix=false,
+                           integrator_alg=TsitPap8(),
+                           use_big_numbers=false,
+                           integate_backwards=false,
+                           kargs...)
+```
+Test ref Ref. [Pilatowsky2020](@cite).
+
+# Arguments:
+- `system` is an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
+"""
  function integrate(sistema::ClassicalSystem;t,
                             u₀,
                             t₀=0.0,
@@ -100,6 +122,8 @@ eye(n)=Matrix(Diagonal(ones(n)))
 
         return s
     end
+    
+
  function lyapunov_spectrum(punto,t)
         #Ψ=big.(punto.x[2])
         Ψ=punto.x[2]
@@ -119,7 +143,12 @@ eye(n)=Matrix(Diagonal(ones(n)))
         cb=FunctionCallingCallback(save;func_everystep=true)
         integrate(sistema;save_intermediate_steps=false,cb=cb,get_fundamental_matrix=true,verbose=false,kargs...)
 
-
         return lyapunov_spectrum(v...)
      end
 end
+
+
+
+
+
+

@@ -2,7 +2,7 @@ push!(LOAD_PATH,"../src/")
 using Base.Filesystem
 using Revise
 using Dicke
-using Documenter
+using Documenter,DocumenterCitations
 while true
 print("Press enter to compile docs")
 readline()
@@ -14,20 +14,21 @@ catch
 end
 revise(Dicke)
 sleep(3)
+bib = CitationBibliography("refs.bib")
+
 try
-makedocs(
+makedocs(bib,
          sitename = "Dicke.jl",
          modules  = [Dicke],
          pages=[
                 "The Dicke.jl package" => "index.md",
                 "Documentation" => [
-                    "ClassicalDicke" => "classicaldicke.md"
-                ]
+                    "ClassicalDicke" => "classicaldicke.md",
+					"ClassicalSystems" => "classicalsystems.md"
+                ],
+				"References" => "references.md"
 
                ])
-deploydocs(;
-    repo="github.com/saulpila/Dicke.jl",
-)
 catch e
         showerror(stdout, e)
 end
