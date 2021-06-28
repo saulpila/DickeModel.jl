@@ -1,8 +1,8 @@
 push!(LOAD_PATH,"../src/")
 using Dicke
 using Documenter,DocumenterCitations
-
-bib = CitationBibliography("refs.bib")
+println(@__DIR__)
+bib = CitationBibliography(Base.Filesystem.joinpath(@__DIR__,"refs.bib"))
 makedocs(bib,
          sitename = "Dicke.jl",
          modules  = [Dicke],
