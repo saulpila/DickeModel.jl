@@ -2,7 +2,7 @@ module ClassicalSystems
 
 export ClassicalSystem,integrate,lyapunov_spectrum,lyapunov_exponent
 
-using DifferentialEquations
+using DiffEqCallbacks,OrdinaryDiffEq,DiffEqBase
 using ProgressMeter
 using RecursiveArrayTools
 using LinearAlgebra
@@ -122,7 +122,7 @@ Test ref Ref. [Pilatowsky2020](@cite).
 
         return s
     end
-    
+
 
  function lyapunov_spectrum(punto,t)
         #Ψ=big.(punto.x[2])
@@ -146,9 +146,3 @@ Test ref Ref. [Pilatowsky2020](@cite).
         return lyapunov_spectrum(v...)
      end
 end
-
-
-
-
-
-

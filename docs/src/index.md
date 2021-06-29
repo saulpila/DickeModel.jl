@@ -7,8 +7,8 @@ This package is a result of more than two years of investigation of the [Dicke M
 5. *Positive quantum Lyapunov exponents in experimental systems with a regular classical limit*.  Physical Review E **101** 010202(R) (2020) DOI: [10.1103/PhysRevE.101.010202](https://doi.org/10.1103/PhysRevE.101.010202)
 
 It is split into several submodules:
-* [`ClassicalDicke`](classicaldicke.md) allows to compute classical dynamics of the Dicke model, including a wide range of semiclassical aproximations to quantum properties.
-* [`ClassicalSystems`](classicalsystems.md) provides a general framework for computing classical Hamiltonian dynamics, inlcuding Lyapunov exponents. It is mostly used for the Dicke model, but in principle it can be expanded to other Hamiltonians.
+* [`ClassicalDicke`](@ref Dicke.ClassicalDicke) allows to compute classical dynamics of the Dicke model, including a wide range of semiclassical aproximations to quantum properties.
+* [`ClassicalSystems`](@ref Dicke.ClassicalSystems) provides a general framework for computing classical Hamiltonian dynamics, inlcuding Lyapunov exponents. It is mostly used for the Dicke model, but in principle it can be expanded to other Hamiltonians.
 * `DickeBCE` provides multiple functions for analyzing the quantum Dicke model. It uses an efficient basis known as the Efficient Coherent Basis (BCE). See Refs. above.
 *  `UPOS` contains a set of functions to find unstable periodic orbits (UPOs) in the classical Dicke model. (See Ref. 3)
 *  `TruncatedWignerApproximation` allows to perform semiclassical calculations using the truncated Wigner approximation (TWA). (See Ref 2)

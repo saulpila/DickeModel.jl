@@ -187,9 +187,9 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
     
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
-    - `Q`,`P`,`p`,`ε` are values of ``Q``,``P``,``p``,``\\epsilon``, respectively.
+    - `Q`, `P`, `p`, and `ε` are values of ``Q``, ``P``, ``p``, and ``\\epsilon``, respectively.
     - `signo` is `+` for ``q_+`` and `-` for ``q_-``
-    - If `returnNaNonError` is `true`, then `NaN` is returned if there is no solutions. If it is `false`, and error is raised.
+    - If `returnNaNonError` is `true`, then `NaN` is returned if there are no solutions. If it is `false`, and error is raised.
     """
     function q_of_ε(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,signo::Union{typeof(-),typeof(+)}=+,returnNaNonError=true)
         Δ=discriminant_of_q_solution(system;Q=Q,P=P,p=p,ε=ε)
@@ -300,6 +300,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
     function Point(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,signo::Union{typeof(-),typeof(+)}=+)
     ```
     Returns a list `[Q,q,P,p]`, where `q` is calculated with [`ClassicalDicke.q_of_ε`](@ref). See that function for details on the arguments.
+    If there are no solutions for ``q``, an error is raised.
     """
     Point(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,signo::Union{typeof(-),typeof(+)}=+) = Point([Q,q_of_ε(system::ClassicalSystems.ClassicalSystem,Q=Q,P=P,p=p,ε=ε,signo=signo,returnNaNonError=false),P,p])
     

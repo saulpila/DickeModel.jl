@@ -5,7 +5,7 @@ module TruncatedWignerApproximation
     using Distributions
     using Mamba
     using ProgressMeter
-    using DifferentialEquations
+    using DiffEqCallbacks
     using SymEngine
     using ..ClassicalSystems
     using DataStructures

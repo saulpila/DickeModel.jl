@@ -4,9 +4,8 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     using ..ClassicalSystems
     using ..ClassicalDicke
     using LinearAlgebra
-    using DifferentialEquations
+    using DiffEqCallbacks,OrdinaryDiffEq, DiffEqBase
     using ProgressMeter
-    using Plots
     using ..PhaseSpaces
     using ..DickeBCE
     using ..DickeHusimiProjections
@@ -26,7 +25,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         us=integrate_PO(po,tol=tol).u
         return sum(us[i][3]*(us[i][1]-us[i-1][1]) + us[i][4]*(us[i][2]-us[i-1][2]) for i in 2:length(us))
     end
-    function average_over_PO(po::Union{DifferentialEquations.ODESolution,PO},f;tol=1e-12)
+    function average_over_PO(po::Union{OrdinaryDiffEq.ODESolution,PO},f;tol=1e-12)
         tot=nothing
 
         if isa(po,PO)
@@ -536,40 +535,40 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         end
         return p
     end
-    function plot_PO_QPp(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
-        for po in F
-
-            u=integrate_PO(po)
-            us=u.u
-            ts=u.t
-            plot!(p,[i[1] for i in us],[i[3] for i in us],[i[4] for i in us];xlabel="Q",ylabel="P",zlabel="p",fontfamily="Times",opts...)
-        end
-        return p
-    end
-    function plot_PO_qp(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1};H=:nothing,p=plot(),opts...)
-        for po in F
-
-            u=integrate_PO(po)
-            us=u.u
-            ts=u.t
-            plot!(p,[(i[2],i[4]) for i in us];xlabel="q",ylabel="p",fontfamily="Times",opts...)
-        end
-        if H!=:nothing
-
-            contour!(range(-4,stop=4,length=100),range(-2,stop=2,length=100),(q,p)->ClassicalDicke.minimum_ε_for(sis;q=q,p=p,P=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
-        end
-        return p
-    end
-    function plot_PO_Qq(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1},H;p=plot(),opts...)
-        for po in F
-
-            u=integrate_PO(po)
-            us=u.u
-            ts=u.t
-            plot!(p,[(i[1],i[2]) for i in us];xlabel="Q",ylabel="q",fontfamily="Times",opts...)
-        end
-        return p
-    end
+    # function plot_PO_QPp(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
+    #     for po in F
+    #
+    #         u=integrate_PO(po)
+    #         us=u.u
+    #         ts=u.t
+    #         plot!(p,[i[1] for i in us],[i[3] for i in us],[i[4] for i in us];xlabel="Q",ylabel="P",zlabel="p",fontfamily="Times",opts...)
+    #     end
+    #     return p
+    # end
+    # function plot_PO_qp(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1};H=:nothing,p=plot(),opts...)
+    #     for po in F
+    #
+    #         u=integrate_PO(po)
+    #         us=u.u
+    #         ts=u.t
+    #         plot!(p,[(i[2],i[4]) for i in us];xlabel="q",ylabel="p",fontfamily="Times",opts...)
+    #     end
+    #     if H!=:nothing
+    #
+    #         contour!(range(-4,stop=4,length=100),range(-2,stop=2,length=100),(q,p)->ClassicalDicke.minimum_ε_for(sis;q=q,p=p,P=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
+    #     end
+    #     return p
+    # end
+    # function plot_PO_Qq(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1},H;p=plot(),opts...)
+    #     for po in F
+    #
+    #         u=integrate_PO(po)
+    #         us=u.u
+    #         ts=u.t
+    #         plot!(p,[(i[1],i[2]) for i in us];xlabel="Q",ylabel="q",fontfamily="Times",opts...)
+    #     end
+    #     return p
+    # end
     function overlap_of_tube_with_homogenous_state(sistemaQ::DickeBCE.QuantumSystem,po::PO;time_integral_tolerance=1e-7,phase_space_integral_resolution=0.1)
         orbit=integrate_PO(po,tol=time_integral_tolerance)
         ∫dtHtx(x)=average_over_PO(orbit,u-> DickeBCE.HusimiOfCoherent(sistemaQ,u,x))
@@ -604,11 +603,11 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
             m=sum(abs2,uvar-u)
             if m<tol
                 result=true
-                DifferentialEquations.terminate!(integrator)
+                terminate!(integrator)
             end
             return m*sign(uvar[4]-u[4])
         end
-        cb=DifferentialEquations.ContinuousCallback(distance,integrator->distance(integrator.u,integrator.t,integrator),save_positions=(false,false),rootfind=true,interp_points=10,reltol=10^-8,abstol=10^-8)
+        cb=ContinuousCallback(distance,integrator->distance(integrator.u,integrator.t,integrator),save_positions=(false,false),rootfind=true,interp_points=10,reltol=10^-8,abstol=10^-8)
         ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=1e-8,save_intermediate_steps=false,cb=cb)
         return result
     end
