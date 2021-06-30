@@ -45,7 +45,7 @@ Here is a way to draw a [Poincaré surface](https://en.wikipedia.org/wiki/Poinca
 ```@example examples
 using Dicke, Dicke.ClassicalDicke, Dicke.ClassicalSystems
 using Plots
-using DifferentialEquations
+using DiffEqBase
 
 system=ClassicalDicke.ClassicalSystem(ω=0.8,γ=0.8,ω₀=1)
 mplot=scatter(fmt=:png, key=false, markersize=1, legend=false,
