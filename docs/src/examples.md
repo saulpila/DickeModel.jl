@@ -2,7 +2,6 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
-on_github=false
 using Dicke
 ```
 ## (Semi)classical Dicke model
@@ -56,8 +55,8 @@ function save(state) #this function saves (Q,P) to pts if q = q₊ (and not q₋
     Q,q,P,p = state.u  
     q₊ = q_of_ε(system; Q=Q, P=P, p=p, ε=ε, signo=+)
     q₋ = q_of_ε(system; Q=Q, P=P, p=p, ε=ε, signo=-)
-    if abs(q - q₊) < abs(q - q₋) #we have to compare approximatelly because the equalities...
-        push!(pts, (Q,P))    # ...may not be exact due to numerical error.
+    if abs(q - q₊) < abs(q - q₋) #we have to compare approximatelly because the
+        push!(pts, (Q,P))  # equalities may not be exact due to numerical error.
     end                     
 end
     
