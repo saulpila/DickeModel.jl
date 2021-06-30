@@ -11,24 +11,24 @@ using Plots
 system = ClassicalDicke.ClassicalSystem(ω=1, γ=1, ω₀=1)
 ν(ε) = density_of_states(system, j=100, ε=ε)
 εgs = minimum_energy(system)
-plot(ν, εgs, 2, xlabel=&quot;ε&quot;, ylabel=&quot;Density of States&quot;)</code></pre><p><img src="../density_of_states.svg" alt/></p><p>This is precisely the red line in Fig. A1. of Ref. <a href="../references/#Villasenor2020">David Villaseñor, Saúl Pilatowsky-Cameo, Miguel A Bastarrachea-Magnani, Sergio Lerma, Lea F Santos, Jorge G Hirsch (2020)</a>.</p><h3 id="Drawing-a-Poincaré-surface"><a class="docs-heading-anchor" href="#Drawing-a-Poincaré-surface">Drawing a Poincaré surface</a><a id="Drawing-a-Poincaré-surface-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Poincaré-surface" title="Permalink"></a></h3><p>Here is a way to draw a <a href="https://en.wikipedia.org/wiki/Poincar%C3%A9_map">Poincaré surface</a> for the Dicke model. We use <a href="../ClassicalSystems/#Dicke.ClassicalSystems.integrate-Tuple{Dicke.ClassicalSystems.ClassicalSystem}"><code>ClassicalSystems.integrate</code></a> to integrate a bunch of initial conditions. Using the <a href="https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback">callback system of DifferentialEquations</a>, we save the points where <span>$p=0$</span>.</p><pre><code class="language-">using Dicke, Dicke.ClassicalDicke, Dicke.ClassicalSystems
+plot(ν, εgs, 2, xlabel=&quot;ε&quot;, ylabel=&quot;Density of States&quot;)</code></pre><p><img src="../density_of_states.svg" alt/></p><p>This is precisely the red line in Fig. A1. of Ref. <a href="../references/#Villasenor2020">David Villaseñor, Saúl Pilatowsky-Cameo, Miguel A Bastarrachea-Magnani, Sergio Lerma, Lea F Santos, Jorge G Hirsch (2020)</a>.</p><h3 id="Drawing-a-Poincaré-surface"><a class="docs-heading-anchor" href="#Drawing-a-Poincaré-surface">Drawing a Poincaré surface</a><a id="Drawing-a-Poincaré-surface-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Poincaré-surface" title="Permalink"></a></h3><p>Here is a way to draw a <a href="https://en.wikipedia.org/wiki/Poincar%C3%A9_map">Poincaré surface</a> for the Dicke model. We use <a href="../ClassicalSystems/#Dicke.ClassicalSystems.integrate-Tuple{Dicke.ClassicalSystems.ClassicalSystem}"><code>ClassicalSystems.integrate</code></a> to integrate a bunch of initial conditions. Using the <a href="https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback">callback system of DifferentialEquations</a>, we save the points where <span>$p=0$</span>.</p><pre><code class="language-julia">using Dicke, Dicke.ClassicalDicke, Dicke.ClassicalSystems
 using Plots
-using DifferentialEquations
+using DiffEqBase
 
 system=ClassicalDicke.ClassicalSystem(ω=0.8,γ=0.8,ω₀=1)
 mplot=scatter(fmt=:png, key=false, markersize=1, legend=false,
-    size=(500,500), color_palette=:darkrainbow, xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;) 
+    size=(500,500), color_palette=:darkrainbow, xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;)
 
 pts = Tuple{Float64, Float64}[] #a list of points (Q,P)
 function save(state) #this function saves (Q,P) to pts if q = q₊ (and not q₋).
-    Q,q,P,p = state.u  
+    Q,q,P,p = state.u
     q₊ = q_of_ε(system; Q=Q, P=P, p=p, ε=ε, signo=+)
     q₋ = q_of_ε(system; Q=Q, P=P, p=p, ε=ε, signo=-)
     if abs(q - q₊) &lt; abs(q - q₋) #we have to compare approximatelly because the equalities...
         push!(pts, (Q,P))    # ...may not be exact due to numerical error.
-    end                     
+    end
 end
-    
+
 callback=ContinuousCallback((x, t, _) -&gt; x[4], #when p=x[4] is 0,
     save; #execute the function save
     save_positions=(false,false), abstol=1e-6)
@@ -44,8 +44,7 @@ for Q in 0:0.02:maximum_Q_for_ε(system, ε) #for a bunch of initial Qs,
         empty!(pts)
 
 end
-mplot
-savefig(&quot;poincare_surface.png&quot;);nothing #hide</code></pre><p><img src="poincare_surface.png" alt/></p><h3 id="Drawing-a-Lyapunov-exponent-map"><a class="docs-heading-anchor" href="#Drawing-a-Lyapunov-exponent-map">Drawing a Lyapunov exponent map</a><a id="Drawing-a-Lyapunov-exponent-map-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Lyapunov-exponent-map" title="Permalink"></a></h3><p>Let us plot the Lyapunov exponents for the Poincaré map of the previous example.</p><pre><code class="language-julia">using Dicke, Dicke.ClassicalDicke, Dicke.ClassicalSystems
+mplot</code></pre><p><img src="../poincare_surface.png" alt/></p><h3 id="Drawing-a-Lyapunov-exponent-map"><a class="docs-heading-anchor" href="#Drawing-a-Lyapunov-exponent-map">Drawing a Lyapunov exponent map</a><a id="Drawing-a-Lyapunov-exponent-map-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Lyapunov-exponent-map" title="Permalink"></a></h3><p>Let us plot the Lyapunov exponents for the Poincaré map of the previous example.</p><pre><code class="language-julia">using Dicke, Dicke.ClassicalDicke, Dicke.ClassicalSystems
 using Plots
 system = ClassicalDicke.ClassicalSystem(ω=0.8, γ=0.8, ω₀=1)
 ε = -1.35
@@ -70,4 +69,4 @@ mat=[λ(Q,P) for P in Ps, Q in Qs]
 mat=vcat(mat[end:-1:2,1:end], mat) #mirror in P
 Ps=vcat(-Ps[end:-1:2], Ps)
 
-heatmap(Qs, Ps, mat, xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;)</code></pre><p><img src="../lyapunov_map.svg" alt/></p><p>It looks very similar to the Poincaré map of the previous example! Notice how there are regular (black) and chaotic (yellow) regions.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« The Dicke.jl package</a><a class="docs-footer-nextpage" href="../ClassicalDicke/">ClassicalDicke »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Wednesday 30 June 2021 04:48">Wednesday 30 June 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+heatmap(Qs, Ps, mat, xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;)</code></pre><p><img src="../lyapunov_map.svg" alt/></p><p>It looks very similar to the Poincaré map of the previous example! Notice how there are regular (black) and chaotic (yellow) regions.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« The Dicke.jl package</a><a class="docs-footer-nextpage" href="../ClassicalDicke/">ClassicalDicke »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Wednesday 30 June 2021 05:03">Wednesday 30 June 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
