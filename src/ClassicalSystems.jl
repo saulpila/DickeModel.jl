@@ -146,17 +146,18 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
     ```
     Same as [`ClassicalSystems.lyapunov_exponent`](@ref), but returns the whole [Lyapunov spectrum](https://en.wikipedia.org/wiki/Lyapunov_exponent#Definition_of_the_Lyapunov_spectrum).
     """
-    function lyapunov_spectrum(system::ClassicalSystem;kargs...)
+    function lyapunov_spectrum(system::ClassicalSystem;callback=nothing,kargs...)
         v=false
         function save(uvar,t,integrator)
-
             v=(copy(uvar),t)
         end
         cb=FunctionCallingCallback(save;func_everystep=true)
-        integrate(system;save_everystep=false,get_fundamental_matrix=true,verbose=false,callback=cb,kargs...)
-        
-        
-        
+        if callback===nothing
+            callback=cb
+        else
+            callback=CallbackSet(callback,cb)
+        end
+        r=integrate(system;save_everystep=false,get_fundamental_matrix=true,callback=callback,kargs...) 
         return lyapunov_spectrum(v...)
      end
 end

@@ -1,5 +1,5 @@
 module ClassicalDicke
-export q_of_ε,minimum_ε_for,Point,Pointθϕ,discriminant_of_q_solution,
+export q_of_ε,q_sign,minimum_ε_for,Point,Pointθϕ,discriminant_of_q_solution,
        energy_shell_volume,density_of_states,energy_width_of_coherent_state,
        maximum_P_for_ε,maximum_Q_for_ε,minimum_energy,minimum_energy_point,
        normal_frequency,phase_space_dist_squared
@@ -98,7 +98,7 @@ export q_of_ε,minimum_ε_for,Point,Pointθϕ,discriminant_of_q_solution,
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
     - `Qsign` toggles the sign of the ``Q`` coordinate, that is, `+` for ``\\mathbf{x}_\\text{GS}`` and  `-` for ``\\widetilde{\\mathbf{x}}_\\text{GS}``.
 
-    Note: This function currently only works for the supperadiant phase.
+    Note: This function currently only works for the superradiant phase.
     """
     function minimum_energy_point(system::ClassicalSystems.ClassicalSystem,signoQ::Union{typeof(-),typeof(+)}=+)
         local signoq
@@ -204,7 +204,31 @@ export q_of_ε,minimum_ε_for,Point,Pointθϕ,discriminant_of_q_solution,
         ω₀,ω,γ=system.params
         return signo(-2*γ*Q*sqrt(1-(Q^2+P^2)/4),sqrt(Δ))/ω
     end
-
+    """
+    ```julia
+    function q_sign(system::ClassicalSystems.ClassicalSystem,x,ε=hamiltonian(system)(x))
+    ```
+    Returns the sign of the root of the second degree equation in ``q`` given by
+    ```math
+        h_\\text{cl}(Q,q,P,p)=\\epsilon.
+    ```
+    That is, this function returns `+` if `q=x[2] ≈ q_of_ε(system;Q=x[1],P=x[3],p=x[4],ε=ε,signo=+)`
+    and returns `-` if `q=x[2] ≈ q_of_ε(system;Q=x[1],P=x[3],p=x[4],ε=ε,signo=-)`.
+    # Arguments:
+    - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
+    - `x` is a vector in the form `[Q,q,P,p]`.
+    - `ε` should be the energy of `x`. If this is not passed, it is computed using `hamiltonian(system)`. 
+    """
+    function q_sign(system::ClassicalSystems.ClassicalSystem,x,ε=hamiltonian(system)(x))
+        Q,q,P,p = x
+        q₊ = q_of_ε(system; Q=Q, P=P, p=p, ε=ε, signo=+)
+        q₋ = q_of_ε(system; Q=Q, P=P, p=p, ε=ε, signo=-)
+        if abs(q - q₊) < abs(q - q₋) 
+          return +
+        else
+          return -
+        end
+    end
     """
     ```julia
     function minimum_ε_for(system::ClassicalSystems.ClassicalSystem;Q=:nothing,q=:nothing,P=:nothing,p=:nothing)
