@@ -1,11 +1,11 @@
 module ClassicalDicke
-
-export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,energy_shell_volume,density_of_states
+export q_of_ε,minimum_ε_for,Point,Pointθϕ,discriminant_of_q_solution,
+       energy_shell_volume,density_of_states,energy_width_of_coherent_state,
+       maximum_P_for_ε,maximum_Q_for_ε,minimum_energy,minimum_energy_point,
+       normal_frequency,phase_space_dist_squared
     using ..ClassicalSystems
     using ..PhaseSpaces
     using ParameterizedFunctions
-    using ..TruncatedWignerApproximation
-    using Mamba
     using QuadGK
     """
     ```julia
@@ -39,7 +39,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
     - `j` is the value of ``j``
     - `ε` is the scaled energy ``ϵ=E/j``
-    
+
     See [Plotting the density of states](@ref) for an example.
     """
     function density_of_states(system::ClassicalSystems.ClassicalSystem;j,ε)
@@ -75,7 +75,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
     - `signo` is `-` for ``\\Omega^A`` and `+` for ``\\Omega^B``.
-    
+
     Note: This function currently only works for the supperadiant phase.
     """
     function normal_frequency(system::ClassicalSystems.ClassicalSystem,signo::Union{typeof(-),typeof(+)}=+)
@@ -87,7 +87,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         end
         return sqrt((1/(2*γc^4))*signo(ω^2*γc^4 + ω₀^2*γ^4, sqrt((ω₀^2*γ^4 -ω^2*γc^4)^2 + 4*γc^8*ω^2*ω₀^2)))
     end
-    
+
     """
     ```julia
     function minimum_energy_point(system::ClassicalSystems.ClassicalSystem,Qsign::Union{typeof(-),typeof(+)}=+)
@@ -97,7 +97,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
     - `Qsign` toggles the sign of the ``Q`` coordinate, that is, `+` for ``\\mathbf{x}_\\text{GS}`` and  `-` for ``\\widetilde{\\mathbf{x}}_\\text{GS}``.
-    
+
     Note: This function currently only works for the supperadiant phase.
     """
     function minimum_energy_point(system::ClassicalSystems.ClassicalSystem,signoQ::Union{typeof(-),typeof(+)}=+)
@@ -115,7 +115,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         end
         return Point(Q=signoQ(sqrt(2-ω*ω₀/(2*γ^2))),q=signoq(sqrt(4*γ^2/ω^2 - ω₀^2/(4*γ^2))),P=0,p=0)
     end
-    
+
     """
     ```julia
     function minimum_energy(system::ClassicalSystems.ClassicalSystem)
@@ -124,17 +124,17 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
 
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
-    
+
     Note: This function currently only works for the supperadiant phase.
     """
     minimum_energy(system::ClassicalSystems.ClassicalSystem)= hamiltonian(system)(minimum_energy_point(system))
-    
+
     """
     ```julia
     function energy_width_of_coherent_state(system::ClassicalSystems.ClassicalSystem,x,j::Real)
     ```
-    Returns the energy width ``\\sigma`` of the coherent state ``\\left | \\mathbf{x}\\right \\rangle``, in units of ``\\epsilon``. This 
-    quantity is given by ``\\sigma_D/j`` with ``\\sigma_D`` as in App. A of Ref. [Lerma2018](@cite). 
+    Returns the energy width ``\\sigma`` of the coherent state ``\\left | \\mathbf{x}\\right \\rangle``, in units of ``\\epsilon``. This
+    quantity is given by ``\\sigma_D/j`` with ``\\sigma_D`` as in App. A of Ref. [Lerma2018](@cite).
 
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
@@ -146,14 +146,14 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         Q,q,P,p=punto
         θ=PhaseSpaces.θ_of_QP(Q,P)
         ϕ=PhaseSpaces.ϕ_of_QP(Q,P)
-        
+
         Ω₁=j*(ω^2*(q^2+p^2)/2+ω₀^2*sin(θ)^2/2 +2*γ^2*((sin( θ)^2*sin(ϕ)^2+cos(θ)^2)*q^2 + sin(θ)^2*cos(ϕ)^2) +2*γ*q*(ω*cos(ϕ) + ω₀*cos(θ)*cos(ϕ))*sin(θ))
         #note that the sign of the third term is flipped with respect to Lerma2018, because they use cos θ = jz and we use cos θ = - jz.
-        
+
         Ω₂=γ^2*(sin(θ)^2*sin(ϕ)^2 + cos(θ)^2)
         return sqrt(Ω₁ + Ω₂)/j
     end
-    
+
     """
     ```julia
     function discriminant_of_q_solution(system::ClassicalSystems.ClassicalSystem; Q,P,p,ε)
@@ -163,7 +163,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         h_\\text{cl}(Q,q,P,p)=\\epsilon,
     ```
     where ``h_\\text{cl}`` is given by Eq. (5) of Ref. [Pilatowsky2021](@cite).
-    
+
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
     - `Q`, `P`, `p`, and `ε` are the values of ``Q``, ``P``, ``p``, and ``\\epsilon``, respectively.
@@ -173,8 +173,8 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         r=1-(Q^2+P^2)/4
         return 4*γ^2*Q^2*r - p^2*ω^2 - ω*ω₀*(P^2 + Q^2 - 2) + 2*ω*ε
     end
-    
-    
+
+
     """
     ```julia
     function q_of_ε(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,signo::Union{typeof(-),typeof(+)}=+,returnNaNonError=true)
@@ -184,7 +184,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         h_\\text{cl}(Q,q,P,p)=\\epsilon,
     ```
     where ``h_\\text{cl}`` is given by Eq. (5) of Ref. [Pilatowsky2021](@cite).
-    
+
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
     - `Q`, `P`, `p`, and `ε` are values of ``Q``, ``P``, ``p``, and ``\\epsilon``, respectively.
@@ -204,13 +204,13 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         ω₀,ω,γ=system.params
         return signo(-2*γ*Q*sqrt(1-(Q^2+P^2)/4),sqrt(Δ))/ω
     end
-    
+
     """
     ```julia
     function minimum_ε_for(system::ClassicalSystems.ClassicalSystem;Q=:nothing,q=:nothing,P=:nothing,p=:nothing)
     ```
     Returns the minimum energy ``\\epsilon`` when constraining the system to three fixed values of the coordinates ``Q``, ``q``, ``P``, ``p``.
-    
+
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
     - You may pass either ``(Q,q,P)`` or ``(q,P,p)``. The other combinanations are not implemented.
@@ -236,7 +236,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
     function maximum_P_for_ε(system::ClassicalSystems.ClassicalSystem,ε)
     ```
     Computes the maximum value of the parameter ``P`` accessible to the system at energy ``\\epsilon``.
-    
+
     # Arguments:
     - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
     - `ε` is the scaled energy ``ϵ=E/j``.
@@ -276,14 +276,14 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         return 4-u[3]^2-u[1]^2<=0
     end
     varnames=[:Q,:q,:P,:p]
-    
+
     """
     ```julia
     function ClassicalSystem(;ω₀,ω,γ)
     ```
-    Generates an instance of [`ClassicalSystems.ClassicalSystem`](@ref) which represents the 
+    Generates an instance of [`ClassicalSystems.ClassicalSystem`](@ref) which represents the
     classical Dicke model with the given parameters ``ω_0``, ``ω``, and ``γ``. See Eq. (5) of Ref. [Pilatowsky2021](@cite).
-    
+
     The returned value may be passed to all functions in this module that require an instance of `ClassicalSystems.ClassicalSystem`,
     as well as functions in other modules, such as  [`ClassicalSystems.integrate`](@ref).
     """
@@ -294,7 +294,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         u
     end
     Point(;Q,q,P,p)=Point([Q,q,P,p])
-    
+
     """
     ```julia
     function Point(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,signo::Union{typeof(-),typeof(+)}=+)
@@ -303,7 +303,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
     If there are no solutions for ``q``, an error is raised.
     """
     Point(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,signo::Union{typeof(-),typeof(+)}=+) = Point([Q,q_of_ε(system::ClassicalSystems.ClassicalSystem,Q=Q,P=P,p=p,ε=ε,signo=signo,returnNaNonError=false),P,p])
-    
+
     """
     ```julia
     function Pointθϕ(;θ,ϕ,q,p)
@@ -324,48 +324,48 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         Q2,q2,P2,p2=y
         return (q1-q2)^2 + (p1-p2)^2 + arc_between_QP(Q1,P1,Q2,P2)^2
     end
-    """
-    ```julia
-    function WignerHWxSU2_fixed_ε(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,j,signoq=+)
-    ```
-    Returns an instance of [`TruncatedWignerApproximation.PhaseSpaceDistribution`](@ref) that samples points from the classical energy shell 
-    using a [Random Walk Metropolis-Hastings algorithm](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm) implemented in [Mamba](https://mambajl.readthedocs.io/en/latest/samplers/rwm.html?highlight=RWMVariate).
-    """
-     function WignerHWxSU2_fixed_ε(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,j,signoq=+)
-            Δ(Q,P)=discriminant_of_q_solution(system;Q=Q,P=P,p=p,ε=ε)
-            x₀=Point(system,Q=Q,P=P,p=p,ε=ε,signo=signoq);
-            dst=TruncatedWignerApproximation.WignerHWxSU2(x₀,j);
-            function probability_density(u)
-                Q,q,P,p=u
-                return dst.probability_density(Point(system,Q=Q,P=P,p=p,ε=ε,signo=signoq))/sqrt(Δ(Q,P))
-            end
-            function logf(u)
-                θ,ϕ,p=u
-                Q=PhaseSpaces.Q_of_θϕ(θ,ϕ)
-                P=PhaseSpaces.P_of_θϕ(θ,ϕ)
-                try
-                    return log(probability_density([Q,NaN,P,p]))#*sin(θ)?
-                catch
-                    return -Inf
-                end
-              end
+    # """
+    # ```julia
+    # function WignerHWxSU2_fixed_ε(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,j,signoq=+)
+    # ```
+    # Returns an instance of [`TruncatedWignerApproximation.PhaseSpaceDistribution`](@ref) that samples points from the classical energy shell
+    # using a [Random Walk Metropolis-Hastings algorithm](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm) implemented in [Mamba](https://mambajl.readthedocs.io/en/latest/samplers/rwm.html?highlight=RWMVariate).
+    # """
+    #  function WignerHWxSU2_fixed_ε(system::ClassicalSystems.ClassicalSystem;Q,P,p,ε,j,signoq=+)
+    #         Δ(Q,P)=discriminant_of_q_solution(system;Q=Q,P=P,p=p,ε=ε)
+    #         x₀=Point(system,Q=Q,P=P,p=p,ε=ε,signo=signoq);
+    #         dst=TruncatedWignerApproximation.WignerHWxSU2(x₀,j);
+    #         function probability_density(u)
+    #             Q,q,P,p=u
+    #             return dst.probability_density(Point(system,Q=Q,P=P,p=p,ε=ε,signo=signoq))/sqrt(Δ(Q,P))
+    #         end
+    #         function logf(u)
+    #             θ,ϕ,p=u
+    #             Q=PhaseSpaces.Q_of_θϕ(θ,ϕ)
+    #             P=PhaseSpaces.P_of_θϕ(θ,ϕ)
+    #             try
+    #                 return log(probability_density([Q,NaN,P,p]))#*sin(θ)?
+    #             catch
+    #                 return -Inf
+    #             end
+    #           end
+    #
+    #         m = RWMVariate([PhaseSpaces.θ_of_QP(Q,P),PhaseSpaces.ϕ_of_QP(Q,P),p], [1/sqrt(j),1/sqrt(j),1/sqrt(j)],logf,proposal = Normal)
+    #         function sample()
+    #                 θ,ϕ,p=sample!(m)
+    #                 return Point(system,Q=PhaseSpaces.Q_of_θϕ(θ,ϕ),P=PhaseSpaces.P_of_θϕ(θ,ϕ),p=p,ε=ε,signo=signoq)
+    #         end
+    #         for i in 1:10000
+    #             sample!(m) #bake
+    #         end
+    #         TruncatedWignerApproximation.PhaseSpaceDistribution(probability_density,sample)
+    #     end
 
-            m = RWMVariate([PhaseSpaces.θ_of_QP(Q,P),PhaseSpaces.ϕ_of_QP(Q,P),p], [1/sqrt(j),1/sqrt(j),1/sqrt(j)],logf,proposal = Normal)
-            function sample()
-                    θ,ϕ,p=sample!(m)
-                    return Point(system,Q=PhaseSpaces.Q_of_θϕ(θ,ϕ),P=PhaseSpaces.P_of_θϕ(θ,ϕ),p=p,ε=ε,signo=signoq)
-            end
-            for i in 1:10000
-                sample!(m) #bake
-            end
-            TruncatedWignerApproximation.PhaseSpaceDistribution(probability_density,sample)
-        end
-        
         """
         ```julia
         function classicalPathRandomSampler(system::ClassicalSystems.ClassicalSystem;ε,dt=3)
         ```
-        This function returns a function `sample()`, which produces random points within the classical 
+        This function returns a function `sample()`, which produces random points within the classical
         energy shell at energy `ε`.  **This only works at energy shells where the classical dynamics are ergodic.**
         The function `sample()` returns points from a fixed chaotic trajectory picked at random separated by a fixed time interval  `dt`.
         # Arguments:
@@ -373,7 +373,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
         - `ε` is the scaled energy ``ϵ=E/j`` of the energy shell from where to sample.
         - `dt` is the fixed time interval that separates the points that are returned by `sample()`.
         """
-        
+
         function classicalPathRandomSampler(system::ClassicalSystems.ClassicalSystem;ε,dt=3)
              ω₀,ω,γ=system.params
              s=sqrt(16*γ^4 + 8*γ^2*ε*ω + ω^2*ω₀^2)/(2*γ^2)
@@ -392,7 +392,7 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
              Q=Q*rand((-1,1))
              u0=ClassicalDicke.Point(system,Q=Q,P=0,p=0,ε=ε)
              function sample()
-                 u0=ClassicalSystems.integrate(system; t=dt, u₀=u0, save_intermediate_steps=false,show_progress=false).u[end]
+                 u0=ClassicalSystems.integrate(system; t=dt, u₀=u0, save_everystep=false,show_progress=false).u[end]
                  if rand((true,false))
                      u0[1]=-u0[1]
                      u0[2]=-u0[2]
@@ -404,28 +404,5 @@ export hamiltonian, q_of_ε,minimum_ε_for,Point,discriminant_of_q_solution,ener
              end
              return sample
          end
-         
+
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

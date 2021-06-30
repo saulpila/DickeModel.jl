@@ -3,7 +3,6 @@ module TruncatedWignerApproximation
 
     using Distributed
     using Distributions
-    using Mamba
     using ProgressMeter
     using DiffEqCallbacks
     using SymEngine
@@ -100,7 +99,7 @@ module TruncatedWignerApproximation
                                 if notimeevolution
                                     call_loop(u₀,0.0,0)
                                 else
-                                    ClassicalSystems.integrate(sistema,t=last(ts),save_intermediate_steps=false,u₀=u₀,cb=cb;kargs...)
+                                    ClassicalSystems.integrate(sistema,t=last(ts),save_everystep=false,u₀=u₀,callback=cb;kargs...)
                                 end
                                 ti_error=1
 
@@ -407,9 +406,9 @@ module TruncatedWignerApproximation
         sample
     end
 
-    function WignerHW(;q₀,p₀,ħ=:nothing,J=:nothing)
-        if J!=:nothing
-            ħ=1/J
+    function WignerHW(;q₀,p₀,ħ=:nothing,j=:nothing)
+        if j!=:nothing
+            ħ=1/j
         end
         σ=sqrt(ħ/2)
         gaussiana_qp=Distributions.MvNormal([q₀,p₀], σ)
@@ -422,8 +421,8 @@ module TruncatedWignerApproximation
         end
         return PhaseSpaceDistribution(W,sample)
     end
-    function WignerSU2(;Q₀,P₀,J)
-        σ=1/sqrt(2*J)
+    function WignerSU2(;Q₀,P₀,j)
+        σ=1/sqrt(2*j)
         gaussiana_Θ=Distributions.Normal(0, σ)
         Rayleigh_Θ=Distributions.Rayleigh(σ)
         R(θ,ϕ,θ0,ϕ0)= #rotacion que manda el polo norte a θ0,ϕ0 aplicada a θ,ϕ
@@ -452,23 +451,17 @@ module TruncatedWignerApproximation
             end
         end
 
-       # function logf(u)
 
-     #       return log(Wθ(u...))
-     #   end
-     #   m = RWMVariate([centroθ,centroϕ], [σ,σ], logf,
-         #          proposal = Normal)
         function sample()
-           # θ,ϕ=sample!(m)
             Θ=Distributions.rand(Rayleigh_Θ)
             θ,ϕ = R(Θ,rand()*2*pi,centroθ,centroϕ)
             return [PhaseSpaces.Q_of_θϕ(θ,ϕ),PhaseSpaces.P_of_θϕ(θ,ϕ)]
         end
         return PhaseSpaceDistribution(W,sample)
     end
-    function WignerHWxSU2(;Q₀,q₀,P₀,p₀,J)
-        WSU2=WignerSU2(Q₀=Q₀,P₀=P₀,J=J)
-        WHW=WignerHW(q₀=q₀,p₀=p₀,J=J)
+    function WignerHWxSU2(;Q₀,q₀,P₀,p₀,j)
+        WSU2=WignerSU2(Q₀=Q₀,P₀=P₀,j=j)
+        WHW=WignerHW(q₀=q₀,p₀=p₀,j=j)
         W(Q,q,P,p)=WSU2.probability_density(Q,P)*WHW.probability_density(q,p)
         function sample()
             Q,P=WSU2.sample()
@@ -477,15 +470,15 @@ module TruncatedWignerApproximation
         end
         return PhaseSpaceDistribution(W,sample)
     end
-    function WignerHWxSU2(u₀,J)
+    function WignerHWxSU2(u₀,j)
 
-        W=WignerHWxSU2(Q₀=u₀[1],q₀=u₀[2],P₀=u₀[3],p₀=u₀[4],J=J)
+        W=WignerHWxSU2(Q₀=u₀[1],q₀=u₀[2],P₀=u₀[3],p₀=u₀[4],j=j)
         ev(u)=W.probability_density(u...)
         return PhaseSpaceDistribution(ev,W.sample)
     end
-    function WignerSU2(u₀,J)
+    function WignerSU2(u₀,j)
 
-        W=WignerSU2(Q₀=u₀[1],P₀=u₀[2],J=J)
+        W=WignerSU2(Q₀=u₀[1],P₀=u₀[2],j=j)
         ev(u)=W.probability_density(u...)
         return PhaseSpaceDistribution(ev,W.sample)
     end
@@ -516,12 +509,12 @@ module TruncatedWignerApproximation
     module Weyl
 
         using SymEngine
-        function n(J)
+        function n(j)
             SymEngine.@vars q p
-            return (J*(p^2 + q^2) - 1)/2 #Weyl(n̂)=(p²+q²- ħ)/2 y nuestras q,p están escaladas por sqrt(J)
+            return (j*(p^2 + q^2) - 1)/2 #Weyl(n̂)=(p²+q²- ħ)/2 y nuestras q,p están escaladas por sqrt(j)
         end
-        function n2(J)
-            return Weyl_n(J)^2 - 1/4 #Weyl(n̂²)=Weyl(n̂)² - ħ²/4 (ver notas de polkovnikov para la boulder summer school)
+        function n²(j)
+            return n(j)^2 - 1/4 #Weyl(n̂²)=Weyl(n̂)² - ħ²/4 (ver notas de polkovnikov para la boulder summer school)
         end
 
 
@@ -538,26 +531,26 @@ module TruncatedWignerApproximation
             end
             return esc(q)
         end
-        function Jz(J)
-            return @SU2angles sqrt(J*(J+1))*cosθ
+        function Jz(j)
+            return @SU2angles sqrt(j*(j+1))*cosθ
         end
-        function Jx(J)
-            return @SU2angles sqrt(J*(J+1))*sinθ*cosϕ
+        function Jx(j)
+            return @SU2angles sqrt(j*(j+1))*sinθ*cosϕ
         end
-        function Jy(J)
-            return @SU2angles sqrt(J*(J+1))*sinθ*sinϕ
+        function Jy(j)
+            return @SU2angles sqrt(j*(j+1))*sinθ*sinϕ
         end
-        function Jz2(J)
-            bj=sqrt(J*(J+1)*(2*J-1)*(2*J+3))
-            return @SU2angles (J*(J+1))/3 + (bj/2)*(cosθ^2 - 1/3)
+        function Jz²(j)
+            bj=sqrt(j*(j+1)*(2*j-1)*(2*j+3))
+            return @SU2angles (j*(j+1))/3 + (bj/2)*(cosθ^2 - 1/3)
         end
-        function Jx2(J)
-            bj=sqrt(J*(J+1)*(2*J-1)*(2*J+3))
-            return @SU2angles (J*(J+1))/3 + (bj/2)*((sinθ*cosϕ)^2 - 1/3)
+        function Jx²(j)
+            bj=sqrt(j*(j+1)*(2*j-1)*(2*j+3))
+            return @SU2angles (j*(j+1))/3 + (bj/2)*((sinθ*cosϕ)^2 - 1/3)
         end
-        function Jy2(J)
-            bj=sqrt(J*(J+1)*(2*J-1)*(2*J+3))
-            return @SU2angles (J*(J+1))/3 + (bj/2)*((sinθ*sinϕ)^2 - 1/3)
+        function Jy²(j)
+            bj=sqrt(j*(j+1)*(2*j-1)*(2*j+3))
+            return @SU2angles (j*(j+1))/3 + (bj/2)*((sinθ*sinϕ)^2 - 1/3)
         end
     end
 

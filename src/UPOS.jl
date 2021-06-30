@@ -38,7 +38,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                 end
             end
             cb=FunctionCallingCallback(guardar;func_start = false,func_everystep =true)
-            ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=tol,save_intermediate_steps=false,cb=cb)
+            ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=tol,save_everystep=false,callback=cb)
         else
             T=po.t[end]-po.t[1]
             for i in 2:length(po.t)
@@ -110,7 +110,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         end
        # try
             cb=ContinuousCallback((uvar,t,integrator)-> (uvar[4]-u₀[4]),nothing,guardar,save_positions=(false,false),rootfind=true,interp_points=3,reltol=10^-8,abstol=10^-8)
-            t=ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,cb=cb,save_intermediate_steps=false,tol=tol).t[end]
+            t=ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=tol).t[end]
             return knownorder,recurrences,lastsavet/recurrences
 
        # catch
@@ -131,7 +131,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         end
         try
         cb=ContinuousCallback((uvar,t,integrator)-> uvar[end]-u₀[end],nothing,guardar,save_positions=(false,false),rootfind=true,interp_points=3,reltol=tol,abstol=tol)
-            u=ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,cb=cb,save_intermediate_steps=false,tol=tol).u[end]
+            u=ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=tol).u[end]
             return t
         catch
             return NaN
@@ -214,7 +214,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         return found
     end
     function next(sistema,u₀,period;tol=1e-12)
-        u₁,M=ClassicalSystems.integrate(sistema,t=period,u₀=u₀,save_intermediate_steps=false,get_fundamental_matrix=true,tol=tol).u[end].x
+        u₁,M=ClassicalSystems.integrate(sistema,t=period,u₀=u₀,save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
         return u₀-(M-Id)^-1*(u₁-u₀),norm(u₁-u₀)
     end
     function hamiltonian_gradient(sistema,u)
@@ -225,7 +225,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     end
 
     function next_constant_energy(sistema,u₀,T;tol=1e-12)
-        u₁,M=ClassicalSystems.integrate(sistema,t=T,u₀=u₀,save_intermediate_steps=false,get_fundamental_matrix=true,tol=tol).u[end].x
+        u₁,M=ClassicalSystems.integrate(sistema,t=T,u₀=u₀,save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
         gradH=hamiltonian_gradient(sistema,u₁)
         ξ=[0.0,0,0,1]
         Fu₁=-[-gradH[3],-gradH[4],gradH[1],gradH[2]]
@@ -239,7 +239,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     end
 
     function next_constant_P(sistema,u₀,T;tol=1e-12)
-        u₁,M=ClassicalSystems.integrate(sistema,t=T,u₀=u₀,save_intermediate_steps=false,get_fundamental_matrix=true).u[end].x
+        u₁,M=ClassicalSystems.integrate(sistema,t=T,u₀=u₀,save_everystep=false,get_fundamental_matrix=true).u[end].x
         ξ=[0.0,0,0,1]
         gradH=hamiltonian_gradient(sistema,u₁)
         Fu₁=[-gradH[3],-gradH[4],gradH[1],gradH[2]]
@@ -312,7 +312,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                 negguardar,guardar=guardar,negguardar
             end
             cb=ContinuousCallback((uvar,t,integrator)-> (uvar[4]-0),guardar,negguardar,save_positions=(false,false),rootfind=true,interp_points=3,abstol=tol)
-            ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,cb=cb,save_intermediate_steps=false,tol=1e-6)
+            ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=1e-6)
             return nu
         catch
             if abs(u₀[4])< tol  #hay un error cuando el punto ya satisface la condicion por juliaDiff
@@ -353,7 +353,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
          T=PO.T
          maximum(log.(abs.(
             LinearAlgebra.eigvals(ClassicalSystems.integrate(sistema,u₀=PO.u,t=T,
-                    get_fundamental_matrix=true,save_intermediate_steps=false)[end].x[2])
+                    get_fundamental_matrix=true,save_everystep=false)[end].x[2])
             ))/T)
     end
     function _max0(x)
@@ -420,13 +420,13 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                       #  u1=find_p_0(sistema,us[index-1],tol=tol,negative=!p0positiveside)
                      #   periodMultiple=0.333
 #
-                      #  newu=ClassicalSystems.integrate(sistema,u₀=newu,t= periods[index]*0.1,tol=tol,save_intermediate_steps=false).u[end]
-                     #   u1=ClassicalSystems.integrate(sistema,u₀=u1,t=periods[index-1]*periodMultiple,tol=tol,save_intermediate_steps=false).u[end]
+                      #  newu=ClassicalSystems.integrate(sistema,u₀=newu,t= periods[index]*0.1,tol=tol,save_everystep=false).u[end]
+                     #   u1=ClassicalSystems.integrate(sistema,u₀=u1,t=periods[index-1]*periodMultiple,tol=tol,save_everystep=false).u[end]
                        # Δu= newu - u1
                        Δu=hamiltonian_gradient(sistema,newu)
                     end
                 #    eigenvals,eigenvects=LinearAlgebra.eigen(log(ClassicalSystems.integrate(sistema,u₀=newu,t=periods[index],
-                #    get_fundamental_matrix=true,save_intermediate_steps=false,tol=tol)[end].x[2]))
+                #    get_fundamental_matrix=true,save_everystep=false,tol=tol)[end].x[2]))
                  #   nullvects=nullspace(transpose(real.(eigenvects)), atol=0.01)
                  #   allnullvects=[nullvects[:,i]/norm(nullvects[:,i]) for i in 1:size(nullvects)[2]]
                    # minp=minimum(abs(v[4]) for v in allnullvects)
@@ -484,7 +484,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                 if  converror || H(newu) in energies || notbetter
                 #    if notbetter
               #          @show index, us[index]
-             ##           us[index]=ClassicalSystems.integrate(sistema,u₀=newu,t= periods[index]*0.1,tol=tol,save_intermediate_steps=false).u[end]
+             ##           us[index]=ClassicalSystems.integrate(sistema,u₀=newu,t= periods[index]*0.1,tol=tol,save_everystep=false).u[end]
               #          @show , us[index]
               #      end
                     if step/1.2<minstep# (!converror && H(newu) in energies) ||
@@ -608,7 +608,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
             return m*sign(uvar[4]-u[4])
         end
         cb=ContinuousCallback(distance,integrator->distance(integrator.u,integrator.t,integrator),save_positions=(false,false),rootfind=true,interp_points=10,reltol=10^-8,abstol=10^-8)
-        ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=1e-8,save_intermediate_steps=false,cb=cb)
+        ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=1e-8,save_everystep=false,callback=cb)
         return result
     end
     function Base.:(==)(po1::PO,po2::PO)
