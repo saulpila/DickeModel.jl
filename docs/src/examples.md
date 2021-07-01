@@ -139,7 +139,7 @@ for ((Q,P),element) in zip(Iterators.product(Qs,Ps),matrix)
     empty!(pts)
     push!(pts,(Q,P))
     point  = Point(system, Q=Q, P=P, p=0, ε=ε)
-    λ = lyapunov_exponent(system, t=5000, u₀ = point,callback = callback,tol=1e-10)
+    λ = lyapunov_exponent(system, t=5000, u₀=point, callback=callback)
     
     
     for (mQ,mP) in pts
