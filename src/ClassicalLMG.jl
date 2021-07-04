@@ -1,12 +1,38 @@
 module ClassicalLMG
 
-export hamiltonian, Point,ClassicalSystem
+export hamiltonian, Point,ClassicalLMGSystem
     import ..ClassicalSystems
     using ..PhaseSpaces
     using ParameterizedFunctions
 
-    function hamiltonian(sistema::ClassicalSystems.ClassicalSystem)
-        α,=sistema.params
+    LMG_step = @ode_def begin
+        dQ = integate_backwards*P*(1 - α*Q^2/2) # =dH/dP
+        dP = integate_backwards*(Q*(α*P^2/2 - (2*α + 1)) + α*Q^3) # =-dH/dQ
+    end α integate_backwards
+    function out_of_bounds_LMG(u,_,t)
+        return 4-u[2]^2-u[1]^2<=0
+    end
+    varnames=[:Q,:P]
+    struct ClassicalLMGSystem <: ClassicalSystems.ClassicalSystem
+        parameters::Vector{Float64}
+        ClassicalLMGSystem(;α::Real)= new([Float64(α)])
+
+    end
+    function ClassicalSystems.parameters(system::ClassicalLMGSystem)
+        return system.parameters
+    end
+    function ClassicalSystems.step(system::ClassicalLMGSystem)
+        return LMG_step
+    end
+    function ClassicalSystems.out_of_bounds(system::ClassicalLMGSystem)
+        return out_of_bounds_LMG
+    end
+    function ClassicalSystems.varnames(system::ClassicalLMGSystem)
+        return varnames
+    end
+    
+    function hamiltonian(sistema::ClassicalLMGSystem)
+        α,=ClassicalSystens.params(sistema)
         function H(u)
             Q,P=u
             (Q^2 + P^2)/2 + α*(Q^2 - P^2*Q^2/4 - Q^4/4)
@@ -14,46 +40,41 @@ export hamiltonian, Point,ClassicalSystem
         return H
     end
 
-    function discriminant_of_P_solution(sistema::ClassicalSystems.ClassicalSystem,Q,ε)
-        α,=sistema.params
-        return (-Q^4*α+Q^2*(2+4*α)-4*ε)/(-2+Q^2*α)
+    function discriminant_of_P_solution(sistema::ClassicalLMGSystem,Q,ϵ)
+        α,=ClassicalSystens.params(sistema)
+        return (-Q^4*α+Q^2*(2+4*α)-4*ϵ)/(-2+Q^2*α)
     end
-    function P_of_ε(sistema::ClassicalSystems.ClassicalSystem;Q,ε,signo::Union{typeof(-),typeof(+)}=+,returnNaNonError=true)
-        Δ=discriminant_of_P_solution(sistema,Q,ε)
+    function P_of_ϵ(sistema::ClassicalLMGSystem;Q,ϵ,signo::Union{typeof(-),typeof(+)}=+,returnNaNonError=true)
+        Δ=discriminant_of_P_solution(sistema,Q,ϵ)
         if Δ<0
             if returnNaNonError
                 return NaN
             else
-                εmin= minimum_ε_for(sistema;Q=Q)
-                error("The minimum energy for the given parameters is $εmin. There is no P such that (Q=$Q,P) has ε=$ε.")
+                ϵmin= minimum_ϵ_for(sistema;Q=Q)
+                error("The minimum energy for the given parameters is $ϵmin. There is no P such that (Q=$Q,P) has ϵ=$ϵ.")
             end
         end
-        α,=sistema.params
+        α,=ClassicalSystens.params(sistema)
         return signo(0.0,sqrt(Δ))
     end
-    function minimum_ε_for(sistema::ClassicalSystems.ClassicalSystem;Q=:nothing,P=:nothing)
+    function minimum_ϵ_for(sistema::ClassicalLMGSystem;Q=:nothing,P=:nothing)
         if count(x->x==:nothing,[Q,P])!=1
             error("Tienes que una una de Q,P")
         end
-        α,=sistema.params
+        α,=ClassicalSystens.params(sistema)
         if P==:nothing
             return (2*Q^2 + 4*Q^2*α - Q^4*α)/4
         end
         error("Formula no implementada")
     end
-    lipkin_step = @ode_def begin
-        dQ = integate_backwards*P*(1 - α*Q^2/2) # =dH/dP
-        dP = integate_backwards*(Q*(α*P^2/2 - (2*α + 1)) + α*Q^3) # =-dH/dQ
-    end α integate_backwards
-    function out_of_bounds(u,_,t)
-        return 4-u[2]^2-u[1]^2<=0
-    end
-    ClassicalSystem(;α)=ClassicalSystems.ClassicalSystem([α],lipkin_step,out_of_bounds,[:Q,:P])
+
 
     function Point(u::Array)
         u
     end
     Point(;Q,P)=Point([Q,P])
     Pointθϕ(;θ,ϕ)=Point(Q=Q_of_θϕ(θ,ϕ),P=P_of_θϕ(θ,ϕ))
-    Point(sistema::ClassicalSystems.ClassicalSystem;Q,ε,signo::Union{typeof(-),typeof(+)}=+)=Point(Q=Q,P=P_of_ε(sistema;Q=Q,ε=ε,signo=signo,returnNaNonError=false))
+    Point(sistema::ClassicalLMGSystem;Q,ϵ,signo::Union{typeof(-),typeof(+)}=+)=Point(Q=Q,P=P_of_ϵ(sistema;Q=Q,ϵ=ϵ,signo=signo,returnNaNonError=false))
 end
+
+

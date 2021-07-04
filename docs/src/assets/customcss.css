@@ -1,0 +1,20 @@
+ol.biblist {
+  counter-reset: item;
+  margin-left: 0;
+  padding-left: 0;
+}
+.biblist li {
+  display: block;
+  margin-bottom: .5em;
+  margin-left: 2em;
+}
+.biblist li::before {
+  display: inline-block;
+  content: "[" counter(item) "] ";
+  counter-increment: item;
+  width: 2.2em;
+  margin-left: -2.2em;
+}
+.biblist li:target {
+  outline: black auto 1px;
+}

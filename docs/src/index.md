@@ -9,10 +9,9 @@ This package is a result of more than two years of investigation of the [Dicke M
 It is split into several submodules:
 * [`ClassicalDicke`](@ref Dicke.ClassicalDicke) allows to compute classical dynamics of the Dicke model, including a wide range of semiclassical aproximations to quantum properties.
 * [`ClassicalSystems`](@ref Dicke.ClassicalSystems) provides a general framework for computing classical Hamiltonian dynamics, inlcuding Lyapunov exponents. It is mostly used for the Dicke model, but in principle it can be expanded to other Hamiltonians.
-* `DickeBCE` provides multiple functions for analyzing the quantum Dicke model. It uses an efficient basis known as the Efficient Coherent Basis (BCE). See Refs. above.
-*  `UPOS` contains a set of functions to find unstable periodic orbits (UPOs) in the classical Dicke model. (See Ref. 3)
-*  `TruncatedWignerApproximation` allows to perform semiclassical calculations using the truncated Wigner approximation (TWA). (See Ref 2)
-* `FOTOCTWA` is a small module providing functions to compute the fidelity out-of-order-time correlator using the TWA.  (See Ref 5)
-* `DickeHusimiProjections` contains a set of functions to integrate functions over the classical energy shells of the Dicke Model. It also contains specialized functions to compute these integrals for the Husimi functions of quantum states, which define phase-space localization measures known as Rényi occupations (See Refs. 1 and 2)
-* `ClassicalLMG` provides very basic functions for the classical Lipkin-Meshkov-Glick model. (See Ref. 5)
-* `PhaseSpaces` provides some canonical transformations of the Bloch-Sphere.
+* [`DickeBCE`](@ref Dicke.DickeBCE) provides multiple functions for analyzing the quantum Dicke model. It uses an efficient basis known as the Efficient Coherent Basis (BCE). See Refs. above.
+*  [`UPOS`](@ref Dicke.UPOS) contains a set of functions to find unstable periodic orbits (UPOs) in the classical Dicke model. (See Ref. 3)
+*  [`TruncatedWignerApproximation`](@ref Dicke.TruncatedWignerApproximation) allows to perform semiclassical calculations using the truncated Wigner approximation (TWA). (See Refs 2,5)
+* [`DickeHusimiProjections`](@ref Dicke.DickeHusimiProjections) contains a set of functions to integrate functions over the classical energy shells of the Dicke Model. It also contains specialized functions to compute these integrals for the Husimi functions of quantum states, which define phase-space localization measures known as Rényi occupations (See Refs. 1 and 2)
+* [`ClassicalLMG`](@ref Dicke.ClassicalLMG) provides very basic functions for the classical Lipkin-Meshkov-Glick model. (See Ref. 5)
+* [`PhaseSpaces`](@ref Dicke.PhaseSpaces) provides some canonical transformations of the Bloch-Sphere.

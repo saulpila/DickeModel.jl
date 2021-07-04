@@ -13,10 +13,10 @@ module Dicke
       include("TruncatedWignerApproximation.jl")
       include("ClassicalDicke.jl")
       include("DickeBCE.jl")
-      include("FOTOCTWA.jl")
       include("DickeHusimiProjections.jl")
       include("ClassicalLMG.jl")
       include("UPOS.jl")
+
 
 
 

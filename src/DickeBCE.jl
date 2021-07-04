@@ -23,30 +23,29 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
     ```
     This object represents the quantum Dicke model. It stores the parameters of
     the system, and it may be passed to multiple functions
-    in this module. To generate a `QuantumSystem`, use [`QuantumSystem`](@ref DickeBCE.QuantumSystem)
-    or use [`ClassicalDicke.ClassicalSystem`](@ref Dicke.ClassicalLMG.ClassicalSystem).
+    in this module. To generate a `QuantumSystem`, use [`QuantumSystem`](@ref DickeBCE.QuantumSystem).
     """
     mutable struct QuantumSystem
        j::Real
        Nmax::Real
-       classical_system::ClassicalSystems.ClassicalSystem
+       classical_system::ClassicalDicke.ClassicalDickeSystem
     end
     
     """
     ```julia
-    function QuantumSystem(system::ClassicalSystems.ClassicalSystem;j,Nmax=nothing)
+    function QuantumSystem(system::ClassicalDicke.ClassicalDickeSystem;j,Nmax=nothing)
     ```
     Returns a  [`QuantumSystem`](@ref DickeBCE.QuantumSystem) given ``j``, ``N_\\text{max}``,
     ``ω_0``, ``ω``, and ``γ``. 
     # Arguments:
-    - `system` should be generated with [`ClassicalDicke.ClassicalSystem`](@ref).
+    - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `j` is the value of ``j``.
     - `Nmax` is the maximum excitation of the modified bosonic sector in the efficient coherent
       basis (see [Bastarrachea2014PSa](@cite)). It may be omitted if there is a saved diagonalization. 
       In that case, a call to [`diagonalization`](@ref DickeBCE.diagonalization) will populate this value with the 
       greatest available in the saved cache.    
     """
-    function QuantumSystem(system::ClassicalSystems.ClassicalSystem;j,Nmax=nothing)
+    function QuantumSystem(system::ClassicalDicke.ClassicalDickeSystem;j,Nmax=nothing)
         QuantumSystem(j,Nmax,system)
     end
     ind(n,m,N,j)= n*(N+1)+Int(m+j) +1 #+1 because Julia counts from 1.
@@ -71,7 +70,7 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
     function get_params(system::QuantumSystem)
         j=system.j
         Nmax=system.Nmax 
-        ω₀,ω,γ =system.classical_system.params
+        ω₀,ω,γ =ClassicalSystems.parameters(system.classical_system)
         if Nmax!==nothing
             Nmax=Int(Nmax)
         end
@@ -133,13 +132,13 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
             load_cache = true,
             save_cache = true,
             cache_folder = joinpath(homedir(),"dicke_diagonalizations"),
-            maxε::Real = 5.0,
+            maxϵ::Real = 5.0,
             onlyload::Union{AbstractVector{<:Integer},Nothing} = nothing,
             only_eigenenergies = false,
             converged_tolerance=1e-3)
     ```
     If `load_cache = false` or there are no saved diagonalizations in `cache_folder`,
-    diagonalizes the Dicke Hamiltonian up to a maximum energy `maxε`. These eigenstates 
+    diagonalizes the Dicke Hamiltonian up to a maximum energy `maxϵ`. These eigenstates 
     are guaranteed to be converged, with a tolerance determined by `converged_tolerance`.
     Numerical degeneracies are also corrected, to ensure that the eigenstates have parity +1 or -1.
     If `only_eigenenergies` is `false` (default), a tuple `(eigenenergies,eigenstates)` is returned, where
@@ -151,7 +150,7 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
     - `load_cache` is a boolean indicating whether to try to load from cache folder. Defaults to `true`.
     - `save_cache` determines if the results of a computed diagonalization are saved to the cache folder. Defaults to `true`.
     - `cache_folder` is the cache folder where diagonalizations are saved. Default is `%HOME%/dicke_diagonalizations`
-    - `maxε` is the maximum energy up to which we diagonalize. Keep this number 
+    - `maxϵ` is the maximum energy up to which we diagonalize. Keep this number 
       higher than the maximum converged regime you want.
     - `onlyload` may be a vector of integers, indicating the indices of the eigenstates
       to load, or the default value, `nothing`, indicates that all eigenstates should be loaded.
@@ -164,7 +163,7 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
             load_cache = true,
             save_cache = true,
             cache_folder = joinpath(homedir(),"dicke_diagonalizations"),
-            maxε::Real = 5.0,
+            maxϵ::Real = 5.0,
             onlyload::Union{AbstractVector{<:Integer},Nothing} = nothing,
             only_eigenenergies = false,
             converged_tolerance=1e-3)
@@ -221,7 +220,7 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
         display("Diagonalizing")
         FullH=Symmetric(Matrix(Hq));
         Emin=-10*j
-        Emax=maxε*j #maxenergy
+        Emax=maxϵ*j #maxenergy
         eigenenergies,eigenstates=eigen(FullH,Real(Emin),Real(Emax));
 
         convstates=(length(eigenenergies)-1)
@@ -233,7 +232,7 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
         end
         eigenstates=eigenstates[:,1:convstates]
         eigenenergies=eigenenergies[1:convstates]
-        display(" $convstates converged states were obtained up to ε=$(eigenenergies[end]/j)")
+        display(" $convstates converged states were obtained up to ϵ=$(eigenenergies[end]/j)")
 
         display("Fixing numerical degeneracies (correcting parity)")
         #corregimos por degeneraciones numéricas
@@ -327,7 +326,7 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
     """
     function Jz(system::QuantumSystem)
         ω₀,ω,γ,j,Nmax=get_params(system)
-        return H_BCE(QuantumSystem(ClassicalDicke.ClassicalSystem(ω₀=1,ω=1,γ=1),j=j,Nmax=Nmax),_ignorediagonalterms=true)
+        return H_BCE(QuantumSystem(ClassicalDicke.ClassicalDickeSystem(ω₀=1,ω=1,γ=1),j=j,Nmax=Nmax),_ignorediagonalterms=true)
     end
     """
     ```julia
@@ -411,11 +410,11 @@ export H_BCE,QuantumSystem,coherentBCE,coherentBCE!,Wigner,WignerProjQP,WignerPr
             state = coherentBCE(system,x))
         systemC = system.classical_system
         ω₀,ω,γ,j,Nmax=get_params(system)
-        ε=ClassicalDicke.hamiltonian(systemC)(x)
+        ϵ=ClassicalDicke.hamiltonian(systemC)(x)
         σ=ClassicalDicke.energy_width_of_coherent_state(systemC,x,j)
-        ν(ε)=ClassicalDicke.density_of_states(systemC,j=j,ε=ε)
-        n=Distributions.Normal(ε,σ)
-        f=1/(2*sqrt(pi)*σ*j*ν(ε))
+        ν(ϵ)=ClassicalDicke.density_of_states(systemC,j=j,ϵ=ϵ)
+        n=Distributions.Normal(ϵ,σ)
+        f=1/(2*sqrt(pi)*σ*j*ν(ϵ))
         
         return 2*participation_ratio(state,eigenstates=eigenstates,eigenenergies=eigenenergies,count_degeneracies=true)*f 
     end
@@ -884,7 +883,7 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
         end
         return real.(W)
     end
-    function randomState(systemC::ClassicalSystems.ClassicalSystem,systemQ::QuantumSystem;number_of_states=1,kargs...)
+    function randomState(systemC::ClassicalDicke.ClassicalDickeSystem,systemQ::QuantumSystem;number_of_states=1,kargs...)
         ω₀,ω,γ,j,Nmax=get_params(systemQ)
         D=Nmax*(Int(2*j)+1)
         if number_of_states==1
@@ -894,8 +893,8 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
         end
         return randomState!(systemC,systemQ,data;kargs...)
     end
-    function random_cₖ_generator(systemC::ClassicalSystems.ClassicalSystem,systemQ::QuantumSystem;
-                                σ=0.3,ε=-0.5,envelope::UnivariateDistribution=Distributions.Normal(ε,σ),ensemble::Symbol=:GUE,
+    function random_cₖ_generator(systemC::ClassicalDicke.ClassicalDickeSystem,systemQ::QuantumSystem;
+                                σ=0.3,ϵ=-0.5,envelope::UnivariateDistribution=Distributions.Normal(ϵ,σ),ensemble::Symbol=:GUE,
                                 rₖ_distribution::UnivariateDistribution=
                                 if ensemble==:GUE
                                         Exponential(0.91)
@@ -913,8 +912,8 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
                                 end,divide_by_DoS=true)
 
         ω₀,ω,γ,j,Nmax=get_params(systemQ)
-        ρ(ε)=Distributions.pdf(envelope,ε)
-        ν(ε)=ClassicalDicke.density_of_states(systemC,j=j,ε=ε)
+        ρ(ϵ)=Distributions.pdf(envelope,ϵ)
+        ν(ϵ)=ClassicalDicke.density_of_states(systemC,j=j,ϵ=ϵ)
         rₖ()=Distributions.rand(rₖ_distribution)
         rphase()=if phases==true || phases ==:complex
             exp(im*Random.rand()*2*pi)
@@ -923,9 +922,9 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
         else
             1
         end
-        function cₖ(ε;number=1,cache=nothing)
+        function cₖ(ϵ;number=1,cache=nothing)
             if divide_by_DoS
-                dos=ν(ε)
+                dos=ν(ϵ)
             else
                 dos=1
             end
@@ -940,7 +939,7 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
                     return cache
                 end
             else
-                f()=sqrt(rₖ()*ρ(ε)/dos)*rphase()
+                f()=sqrt(rₖ()*ρ(ϵ)/dos)*rphase()
                 if number==1
                     return f()
                 else
@@ -953,8 +952,8 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
         return cₖ
     end
 
-    function randomState!(systemC::ClassicalSystems.ClassicalSystem,systemQ::QuantumSystem,data;eigenenergies,eigenstates,σ=0.3,ε=-0.5,
-        envelope::UnivariateDistribution=Distributions.Normal(ε,σ),tol=1e-5,
+    function randomState!(systemC::ClassicalDicke.ClassicalDickeSystem,systemQ::QuantumSystem,data;eigenenergies,eigenstates,σ=0.3,ϵ=-0.5,
+        envelope::UnivariateDistribution=Distributions.Normal(ϵ,σ),tol=1e-5,
         parity::Union{Nothing,typeof(-),typeof(+)}=nothing,
         parities::AbstractArray{<:Integer,1}=if parity==nothing
             Int8[]
@@ -963,16 +962,16 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
         if length(size(data))==2
            for i in 1:size(data)[2]
                 randomState!(systemC,systemQ,view(data,:,i);
-                                eigenenergies=eigenenergies,eigenstates=eigenstates,σ=σ,ε=ε,envelope=envelope,tol=tol,parity=parity,parities=parities,kargs...)
+                                eigenenergies=eigenenergies,eigenstates=eigenstates,σ=σ,ϵ=ϵ,envelope=envelope,tol=tol,parity=parity,parities=parities,kargs...)
 
            end
            return data
         end
         ω₀,ω,γ,j,Nmax=get_params(systemQ)
-        cₖ=random_cₖ_generator(systemC,systemQ;ε=ε,σ=σ,envelope=envelope,kargs...)
+        cₖ=random_cₖ_generator(systemC,systemQ;ϵ=ϵ,σ=σ,envelope=envelope,kargs...)
         data.=0.0
         nrm=0.0
-        ε0,εf=Distributions.quantile(envelope,tol/2),Distributions.quantile(envelope,1-tol/2)
+        ϵ0,ϵf=Distributions.quantile(envelope,tol/2),Distributions.quantile(envelope,1-tol/2)
         if parity!=nothing
             par=parity(1)
             is_correct_parity = k -> parities[k]==par #debes hacerlo con anonymus functions si no julia tiene un bug bien raro https://github.com/JuliaLang/julia/issues/15602
@@ -982,9 +981,9 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
         end
         for (k,E) in enumerate(eigenenergies)
 
-            ε=E/j
-            if ε0<=ε<=εf && is_correct_parity(k)
-                ck=cₖ(ε)
+            ϵ=E/j
+            if ϵ0<=ϵ<=ϵf && is_correct_parity(k)
+                ck=cₖ(ϵ)
                 nrm+= abs2(ck)
                 data.+=ck.*view(eigenstates,:,k)
             end
@@ -996,14 +995,14 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
 
 
 
-    function randomCoherentStatesInEnergyShell(systemC::ClassicalSystems.ClassicalSystem,systemQ::QuantumSystem;ε::Real,N,dt=3,tol=1e-5,cachedata=nothing)
+    function randomCoherentStatesInEnergyShell(systemC::ClassicalDicke.ClassicalDickeSystem,systemQ::QuantumSystem;ϵ::Real,N,dt=3,tol=1e-5,cachedata=nothing)
         ω₀,ω,γ,j,Nmax=get_params(systemQ)
 
         if cachedata===nothing
             cachedata=zeros(Complex,(Int(2j)+1)*(Nmax))
         end
         cachedata.=0.0im
-        s=ClassicalDicke.classicalPathRandomSampler(systemC,ε=ε,dt=dt)
+        s=ClassicalDicke.classicalPathRandomSampler(systemC,ϵ=ϵ,dt=dt)
         for i in 1:N
             θ=rand()*2*π
             p=s()
@@ -1013,3 +1012,4 @@ function _coherentOverlapOrCoherentState(systemQ::QuantumSystem,punto::AbstractA
         return cachedata
      end
 end
+

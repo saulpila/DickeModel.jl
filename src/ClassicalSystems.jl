@@ -9,22 +9,34 @@ using LinearAlgebra
 
 """
 ```julia
-struct ClassicalSystem
+abstract struct ClassicalSystem
 ```
-This object represents a classical system that may be passed to multiple functions
-in this module. To generate a system, use [`ClassicalDicke.ClassicalSystem`](@ref Dicke.ClassicalDicke.ClassicalSystem)
-or use [`ClassicalDicke.ClassicalSystem`](@ref Dicke.ClassicalLMG.ClassicalSystem).
+This abstract object represents a classical system that may be passed to multiple functions
+in this module. To generate a system, use the subtypes [`ClassicalDicke.ClassicalDickeSystem`](@ref Main.ClassicalDicke.ClassicalDickeSystem)
+or use [`ClassicalLMG.ClassicalLMGSystem`](@ref Main.ClassicalDicke.ClassicalLMGSystem).
 """
-struct ClassicalSystem
-       params
-       step
-       out_of_bounds
-       varnames
+abstract type ClassicalSystem end
+
+function parameters(system::ClassicalSystem)
+    error("Please define a method ClassicalSystems.parameters(system::$(typeof(system)) that returns the list
+    of parameters for this system")
+end
+function step(system::ClassicalSystem)
+    error("Please define a method ClassicalSystems.step(system::$(typeof(system)) that returns ode system
+    of equations")
+end
+function out_of_bounds(system::ClassicalSystem)
+    error("Please define a method ClassicalSystems.out_of_bounds(system::$(typeof(system)) that returns a function 
+    out_of_bounds(u,_,t) that determines if u is out of bounds")
+end
+function varnames(system::ClassicalSystem)
+    error("Please define a method ClassicalSystems.varnames(system::$(typeof(system)) that returns a function 
+    varnames(u,_,t) that reurns the coordinate names in order")
 end
 function nvars(system::ClassicalSystem,vars...)
 
     vs=[]
-    d=Dict(zip(system.varnames,1:length(system.varnames)))
+    d=Dict(zip(varnames(system),1:length(varnames(system))))
     for v in vars
         push!(vs,d[v])
     end
@@ -76,10 +88,10 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
         else
             integate_backwards=1
         end
-        if length(u₀)!=length(system.varnames)
-            error("u₀ should have length $(length(system.varnames)), which is the dimension of the phase space of system")
+        if length(u₀)!=length(varnames(system))
+            error("u₀ should have length $(length(varnames(system))), which is the dimension of the phase space of system")
         end
-        if system.out_of_bounds(u₀,nothing,0)
+        if out_of_bounds(system)(u₀,nothing,0)
             error("The initial condition u₀=$u₀ is out of bounds")
         end
 
@@ -100,21 +112,21 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
 
             u₀ = ArrayPartition(u₀,I)
             function sistemaconmatriz(du,u,p,t)
-                system.step(du.x[1],u.x[1],p,t)
-                system.step.jac(cacheJ,u.x[1],p,t)
+                step(system)(du.x[1],u.x[1],p,t)
+                step(system).jac(cacheJ,u.x[1],p,t)
                 mul!(du.x[2], cacheJ, u.x[2])
             end
             sys = ODEFunction(sistemaconmatriz)
 
 
         else
-            sys=system.step
+            sys=step(system)
         end
 
         tspan = (t₀,t)
-        params=[system.params;integate_backwards]
+        params=[parameters(system);integate_backwards]
         prob = ODEProblem(sys,u₀,tspan,params)
-        s= solve(prob;alg=integrator_alg,isoutofdomain=system.out_of_bounds,progress=false,dtmin=tol,force_dtmin=true,abstol=tol,reltol=tol,kargs...)
+        s= solve(prob;alg=integrator_alg,isoutofdomain=out_of_bounds(system),progress=false,dtmin=tol,force_dtmin=true,abstol=tol,reltol=tol,kargs...)
         return s
     end
 
@@ -132,9 +144,8 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
     Returns the maximal [Lyapunov exponent](https://en.wikipedia.org/wiki/Lyapunov_exponent) for `system`.
     # Arguments
     - `system` is an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
-    - `kargs...` are redirected to [`ClassicalSystems.integrate`](@ref). In particular, you should pass `u₀` and `t`.
-    
-    PENDING EXAMPLE
+    - `kargs...` are redirected to [`ClassicalSystems.integrate`](@ref). In particular, you should pass `u₀`. The value `t` is set to `10000`
+      but you may change it: lower values increase speed, higher values increase precision. 
     """
     function lyapunov_exponent(system::ClassicalSystem;kargs...)
         return max(lyapunov_spectrum(system;kargs...)...)
@@ -146,7 +157,7 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
     ```
     Same as [`ClassicalSystems.lyapunov_exponent`](@ref), but returns the whole [Lyapunov spectrum](https://en.wikipedia.org/wiki/Lyapunov_exponent#Definition_of_the_Lyapunov_spectrum).
     """
-    function lyapunov_spectrum(system::ClassicalSystem;callback=nothing,kargs...)
+    function lyapunov_spectrum(system::ClassicalSystem;callback=nothing,t=10000,kargs...)
         v=false
         function save(uvar,t,integrator)
             v=(copy(uvar),t)
@@ -157,7 +168,16 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
         else
             callback=CallbackSet(callback,cb)
         end
-        r=integrate(system;save_everystep=false,get_fundamental_matrix=true,callback=callback,kargs...) 
+        r=integrate(system;save_everystep=false,get_fundamental_matrix=true,callback=callback,t=t,verbose=false,kargs...) 
         return lyapunov_spectrum(v...)
      end
 end
+
+
+
+
+
+
+
+
+

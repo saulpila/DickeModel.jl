@@ -1,21 +1,21 @@
 module DickeHusimiProjections
 
-export ∫∫dqdpδε,proj_husimi_QP_matrix,loc_measure
+export ∫∫dqdpδϵ,proj_husimi_QP_matrix,loc_measure
 import ..DickeBCE
 import ..ClassicalSystems
 import Distributed
-import ..ClassicalDicke
+using ..ClassicalDicke
 using Statistics
 using Random
 import ProgressMeter
-    function ∫∫dqdpδε(;sistemaC::ClassicalSystems.ClassicalSystem,ε,Q,P,f,p_res=0.01,nonvalue=nothing,onlyqroot::Union{typeof(-),typeof(+),Nothing}=nothing)
+    function ∫∫dqdpδϵ(;sistemaC::ClassicalDickeSystem,ϵ,Q,P,f,p_res=0.01,nonvalue=nothing,onlyqroot::Union{typeof(-),typeof(+),Nothing}=nothing)
         if Q^2+P^2>4
             return nonvalue
         end
-        ω₀, ω, γ=sistemaC.params
+        ω₀, ω, γ=ClassicalSystems.parameters(sistemaC)
         val=nonvalue #variable donde vamos a guardar la suma
 
-        A= (4*γ^2*Q^2*(1-(Q^2+P^2)/4)  - ω*ω₀*(P^2 + Q^2 - 2) + 2*ω*ε)
+        A= (4*γ^2*Q^2*(1-(Q^2+P^2)/4)  - ω*ω₀*(P^2 + Q^2 - 2) + 2*ω*ϵ)
         if A<0
             return nonvalue #estamos fuera del espacio fase permitido
         end
@@ -29,7 +29,7 @@ import ProgressMeter
             if onlyqroot!==nothing && onlyqroot!==signo
                 continue
             end
-            mf(p)=f(ClassicalDicke.Point(sistemaC,Q=Q,P=P,p=p,ε=ε,signo=signo))
+            mf(p)=f(ClassicalDicke.Point(sistemaC,Q=Q,P=P,p=p,ϵ=ϵ,signo=signo))
             for k in 1:n
                 mv= (π/(n*ω)) .* mf(p₊*cos(π*(2*k - 1)/(2n)))
                 if val===nonvalue
@@ -52,9 +52,9 @@ import ProgressMeter
     macro _nothingmacro(ex)
         ex
     end
-    function _generate_QPs(symmetricQP,symmetricP,res,sistema,ε)
-        minP=-ceil(ClassicalDicke.maximum_P_for_ε(sistema,ε)/res)*res
-        minQ=-ceil(ClassicalDicke.maximum_Q_for_ε(sistema,ε)/res)*res
+    function _generate_QPs(symmetricQP,symmetricP,res,sistema,ϵ)
+        minP=-ceil(ClassicalDicke.maximum_P_for_ϵ(sistema,ϵ)/res)*res
+        minQ=-ceil(ClassicalDicke.maximum_Q_for_ϵ(sistema,ϵ)/res)*res
 
         lastQ=-minQ
         lastP=-minP
@@ -72,8 +72,8 @@ import ProgressMeter
         Qs=minQ:res:lastQ
         return Qs,Ps
     end
-    function matrix_QP∫∫dqdpδε(;sistemaC::ClassicalSystems.ClassicalSystem,f,ε,res=0.1,symmetricQP=false,symmetricP=symmetricQP,paralelize=(Distributed.myid()==1),nonvalue=NaN,showprogress=true,onlyqroot::Union{typeof(-),typeof(+),Nothing}=nothing,pbatch_size=Int(min(ceil((4/res)^2/Distributed.nprocs()/10),50)))
-        Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,sistemaC,ε)
+    function matrix_QP∫∫dqdpδϵ(;sistemaC::ClassicalDickeSystem,f,ϵ,res=0.1,symmetricQP=false,symmetricP=symmetricQP,paralelize=(Distributed.myid()==1),nonvalue=NaN,showprogress=true,onlyqroot::Union{typeof(-),typeof(+),Nothing}=nothing,pbatch_size=Int(min(ceil((4/res)^2/Distributed.nprocs()/10),50)))
+        Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,sistemaC,ϵ)
         QPs=[(Q,P) for P in Ps, Q in Qs]
         if showprogress #revolvemos la matriz para que el ETA del proceso sea más acertada
             is=1:length(Ps)*length(Qs)
@@ -88,7 +88,7 @@ import ProgressMeter
             f(batch_size=pbatch_size,args...)
         end
         mat= (showprogress ? (paralelize ? addbatchsize(ProgressMeter.progress_pmap) : ProgressMeter.map) : (paralelize ? addbatchsize(Distributed.pmap) : map))(QPs) do (Q,P)
-            ∫∫dqdpδε(sistemaC=sistemaC,ε=ε,Q=Q,P=P,f=f,p_res=res,nonvalue=nonvalue,onlyqroot=onlyqroot)
+            ∫∫dqdpδϵ(sistemaC=sistemaC,ϵ=ϵ,Q=Q,P=P,f=f,p_res=res,nonvalue=nonvalue,onlyqroot=onlyqroot)
         end
         if showprogress #desrevolvemos
             mat=[mat[ind(revsh[iind(i,j)])...] for i in 1:length(Ps), j in 1:length(Qs)]
@@ -136,7 +136,7 @@ import ProgressMeter
         end
         return cache
     end
-    function ∫∫dqdpδε_husimi_Renyi_powers(;sistemaQ::DickeBCE.QuantumSystem,states::Union{Array{<:Number,1},Array{<:Number,2}},res,Htol=1e-4,nonvalue=NaN,averageallstates=false,averagingfunction=mean,α::Union{AbstractArray{<:Real,1},Real}=2,kargs...)
+    function ∫∫dqdpδϵ_husimi_Renyi_powers(;sistemaQ::DickeBCE.QuantumSystem,states::Union{Array{<:Number,1},Array{<:Number,2}},res,Htol=1e-4,nonvalue=NaN,averageallstates=false,averagingfunction=mean,α::Union{AbstractArray{<:Real,1},Real}=2,kargs...)
         if ! isa(α, AbstractArray)
             α=[α]
         end
@@ -148,7 +148,7 @@ import ProgressMeter
             end
         end
         cache=[gencache() for i in 1:(length(α)+1)]
-        Qs,Ps,mat= matrix_QP∫∫dqdpδε(;f=(pt -> _husimi_Renyi_powers(sistemaQ,pt,states,cache,averageallstates;tol=Htol,averagingfunction=averagingfunction,αs=α)),res=res,nonvalue=nonvalue,kargs...)
+        Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(;f=(pt -> _husimi_Renyi_powers(sistemaQ,pt,states,cache,averageallstates;tol=Htol,averagingfunction=averagingfunction,αs=α)),res=res,nonvalue=nonvalue,kargs...)
         matlist=[[m===nonvalue ? nonvalue : real.(m[i]) for m in mat] for i in  1:(length(α)+1)]
         return Qs,Ps,matlist
     end
@@ -183,7 +183,7 @@ import ProgressMeter
                 resultlength=length(d)
             end
         end
-        Qs,Ps,matlist=  ∫∫dqdpδε_husimi_Renyi_powers(;sistemaQ=sistemaQ,states=states,res=res,Htol=Htol,nonvalue=nonvalue,averageallstates=averageallstates,averagingfunction=averagingfunction,α=α,kargs...)
+        Qs,Ps,matlist=  ∫∫dqdpδϵ_husimi_Renyi_powers(;sistemaQ=sistemaQ,states=states,res=res,Htol=Htol,nonvalue=nonvalue,averageallstates=averageallstates,averagingfunction=averagingfunction,α=α,kargs...)
         L=loc_measure_from_matrices(matlist,nonvalue=nonvalue,α=α)
         if _transposematrixoflistintolistofmatrices
             matproj=[[Union{typeof(nonvalue),Float64}[m===nonvalue ? nonvalue : m[i] for m in matlist[findfirst(α->α==mp,[1;α])]] for mp in matrix_powers] for i in 1:resultlength]
@@ -259,13 +259,13 @@ import ProgressMeter
     function proj_husimi_QP_matrix(;kargs...)
         return loc_measure_and_proj_husimi_QP_matrix(;α=Real[],kargs...)[2]
     end
-    function energy_shell_average(;sistemaC::ClassicalSystems.ClassicalSystem,ε,f,res=0.01,symmetricQP=false,symmetricP=symmetricQP)
+    function energy_shell_average(;sistemaC::ClassicalDickeSystem,ϵ,f,res=0.01,symmetricQP=false,symmetricP=symmetricQP)
         t=0.0
         ft=nothing
 
-        Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,sistemaC,ε)
+        Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,sistemaC,ϵ)
         for Q in Qs, P in Ps
-            v=∫∫dqdpδε(;sistemaC=sistemaC,ε=ε,Q=Q,P=P,f=f,p_res=res,nonvalue=nothing)
+            v=∫∫dqdpδϵ(;sistemaC=sistemaC,ϵ=ϵ,Q=Q,P=P,f=f,p_res=res,nonvalue=nothing)
             if !(v===nothing)
                 add=2pi
                 if Q!=0 && symmetricQP
@@ -288,7 +288,7 @@ import ProgressMeter
     end
 
     #esto pensaria que es más rápido pero en realidad no
- #   function LocMeasureNoMatrix(;sistemaQ::DickeBCE.QuantumSystem,sistemaC::ClassicalSystems.ClassicalSystem,ε,state,res=0.1,Htol=1e-4,symmetricQP=true)
+ #   function LocMeasureNoMatrix(;sistemaQ::DickeBCE.QuantumSystem,sistemaC::ClassicalDickeSystem,ϵ,state,res=0.1,Htol=1e-4,symmetricQP=true)
  #       last=0
  #       if !symmetricQP
  #           last=2
@@ -303,7 +303,7 @@ import ProgressMeter
  #           return [1,h,h^2]
  #       end
  #       for P in Ps, Q in Qs
- #           v=∫∫dqdpδε(sistemaC=sistemaC,ε=ε,Q=Q,P=P,f=f,p_res=res)
+ #           v=∫∫dqdpδϵ(sistemaC=sistemaC,ϵ=ϵ,Q=Q,P=P,f=f,p_res=res)
  #           if v!=nothing
  #               ∫1+=v[1]*res^2
  #               ∫Q+=v[2]*res^2
@@ -318,7 +318,7 @@ import ProgressMeter
  #       else
  #           cache=zeros(Complex{Float64},size(states)[2])
  #       end
- #       Qs,Ps,mat= matrix_QP∫∫dqdpδε(;f=pt->DickeBCE.Husimi(sistemaQ,pt,states;tol=Htol,datacache=cache),nonvalue=nonvalue,kargs...)
+ #       Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(;f=pt->DickeBCE.Husimi(sistemaQ,pt,states;tol=Htol,datacache=cache),nonvalue=nonvalue,kargs...)
  #       mat=[m===nonvalue ? nonvalue : real.(m) for m in mat]
  #       if length(size(states))>1 && _transposematrixoflistintolistofmatrices
  #           mat=[[m===nonvalue ? nonvalue : m[i] for m in mat] for i in 1:(size(states)[2])]
@@ -326,3 +326,5 @@ import ProgressMeter
  #       return Qs,Ps,mat
  #   end
 end
+ 
+

@@ -11,7 +11,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     using ..DickeHusimiProjections
     Id=Matrix{Float64}(I, 4, 4);
     struct PO
-        sistema::ClassicalSystem
+        sistema::ClassicalDickeSystem
         u
         T
     end
@@ -19,7 +19,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     function Base.show(io::IO, m::PO)
          print(io,string("PO @ u=",m.u,", T=", m.T))
     end
-    PO(sistema::ClassicalSystem,u)=PO(sistema,u,get_period(sistema,u))
+    PO(sistema::ClassicalDickeSystem,u)=PO(sistema,u,get_period(sistema,u))
     integrate_PO(po::PO;tol=1e-16)=ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=tol);
     function action(po::PO;tol=1e-16)
         us=integrate_PO(po,tol=tol).u
@@ -159,10 +159,10 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         return inds
     end
     closestodd(i)=Int(2*ceil((i+1)/2)-1)
-    function search_in_interval(sistema,ε,Q=1,s=10000,ds=2;tol=1e-7,n=20,_start=true,refine=false)
+    function search_in_interval(sistema,ϵ,Q=1,s=10000,ds=2;tol=1e-7,n=20,_start=true,refine=false)
         function f(Q,P,bound)
             try
-                return find_orbit(sistema,ClassicalDicke.Point(sistema,P=P,Q=Q,p=0.0,ε=ε),n=n,tol=1e-6,bound=bound,max_order=3)
+                return find_orbit(sistema,ClassicalDicke.Point(sistema,P=P,Q=Q,p=0.0,ϵ=ϵ),n=n,tol=1e-6,bound=bound,max_order=3)
             catch
                 return NaN,NaN
             end
@@ -219,7 +219,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     end
     function hamiltonian_gradient(sistema,u)
         Fu₁=[0.0,0,0,0]
-        sistema.step(Fu₁,u,[sistema.params;1.0],1.0)
+        ClassicalSystems.step(sistema)(Fu₁,u,[ClassicalDickeSystem.parameters(sistema);1.0],1.0)
         gradH=[-Fu₁[3],-Fu₁[4],Fu₁[1],Fu₁[2]]
         return gradH
     end
@@ -409,7 +409,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
 
                 converror=false
                 try
-                    sistema.step.jac(cacheJ,newu,[sistema.params;1.0],1.0)
+                    ClassicalSystems.step(sistema).jac(cacheJ,newu,[ClassicalSystems.parameters(sistema);1.0],1.0)
                     grad=hamiltonian_gradient(sistema,newu)
                     hessian=Λ*cacheJ
                     if index==1
@@ -444,7 +444,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
 
 
                     #hacemos Taylor
-                    #-c=Δε=b*s + a s^2
+                    #-c=Δϵ=b*s + a s^2
                     s=(-b+sqrt(b^2-4*a*c))/(2*a)
                     if abs(H(newu + s*Δu) - (last_e + ΔE)) >abs(H(newu - s*Δu) - (last_e + ΔE))
                         s=-s
@@ -520,9 +520,9 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         end
         return get
     end
-    family_A(sistemaC::ClassicalSystems.ClassicalSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,+),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
- family_B(sistemaC::ClassicalSystems.ClassicalSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,-),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
-    function plot_PO_QP(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
+    family_A(sistemaC::ClassicalDickeSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,+),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
+ family_B(sistemaC::ClassicalDickeSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,-),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
+    function plot_PO_QP(sis::ClassicalDickeSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
         for po in F
 
             u=integrate_PO(po)
@@ -531,11 +531,11 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
             plot!(p,[(i[1],i[3]) for i in us];xlabel="Q",ylabel="P",fontfamily="Times",opts...)
         end
         if H!=:nothing
-            contour!(range(-2,stop=2,length=100),range(-2,stop=2,length=100),(Q,P)->ClassicalDicke.minimum_ε_for(sis;Q=Q,P=P,p=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
+            contour!(range(-2,stop=2,length=100),range(-2,stop=2,length=100),(Q,P)->ClassicalDicke.minimum_ϵ_for(sis;Q=Q,P=P,p=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
         end
         return p
     end
-    # function plot_PO_QPp(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
+    # function plot_PO_QPp(sis::ClassicalDickeSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
     #     for po in F
     #
     #         u=integrate_PO(po)
@@ -545,7 +545,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     #     end
     #     return p
     # end
-    # function plot_PO_qp(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1};H=:nothing,p=plot(),opts...)
+    # function plot_PO_qp(sis::ClassicalDickeSystem,F::Array{PO,1};H=:nothing,p=plot(),opts...)
     #     for po in F
     #
     #         u=integrate_PO(po)
@@ -555,11 +555,11 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     #     end
     #     if H!=:nothing
     #
-    #         contour!(range(-4,stop=4,length=100),range(-2,stop=2,length=100),(q,p)->ClassicalDicke.minimum_ε_for(sis;q=q,p=p,P=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
+    #         contour!(range(-4,stop=4,length=100),range(-2,stop=2,length=100),(q,p)->ClassicalDicke.minimum_ϵ_for(sis;q=q,p=p,P=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
     #     end
     #     return p
     # end
-    # function plot_PO_Qq(sis::ClassicalSystems.ClassicalSystem,F::Array{PO,1},H;p=plot(),opts...)
+    # function plot_PO_Qq(sis::ClassicalDickeSystem,F::Array{PO,1},H;p=plot(),opts...)
     #     for po in F
     #
     #         u=integrate_PO(po)
@@ -573,10 +573,10 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         orbit=integrate_PO(po,tol=time_integral_tolerance)
         ∫dtHtx(x)=average_over_PO(orbit,u-> DickeBCE.HusimiOfCoherent(sistemaQ,u,x))
         res=phase_space_integral_resolution
-        ε=ClassicalDicke.hamiltonian(po.sistema)(po.u)
+        ϵ=ClassicalDicke.hamiltonian(po.sistema)(po.u)
         insidepoints=0
         function f(Q,P)
-            v=DickeHusimiProjections.∫∫dqdpδε(sistemaC=po.sistema,ε=ε,Q=Q,P=P,f=∫dtHtx,nonvalue=NaN,p_res=res)
+            v=DickeHusimiProjections.∫∫dqdpδϵ(sistemaC=po.sistema,ϵ=ϵ,Q=Q,P=P,f=∫dtHtx,nonvalue=NaN,p_res=res)
             if isnan(v)
                 return 0.0
             end
