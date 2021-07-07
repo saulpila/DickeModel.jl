@@ -17,6 +17,8 @@ makedocs(bib,
                 "The Dicke.jl package" => "index.md",
                 "Examples" => [
                     "Classical Dicke" => "ClassicalDickeExamples.md",
+                    "Quantum Dicke (DickeBCE)" => "DickeBCEExamples.md",
+                    "Dicke Husimi Projections" => "DickeHusimiProjectionsExamples.md",
                     "Truncated Wigner Approximation" => "TruncatedWignerApproximationExamples.md",
                 ],
                 "Documentation" => [

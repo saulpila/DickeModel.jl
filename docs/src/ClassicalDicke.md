@@ -1,5 +1,5 @@
 # Dicke.ClassicalDicke
 ```@autodocs
 Modules = [Dicke.ClassicalDicke]
-Order   = [:function, :type]
+Order   = [:type,:function]
 ```

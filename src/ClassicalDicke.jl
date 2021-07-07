@@ -1,8 +1,8 @@
 module ClassicalDicke
-export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,discriminant_of_q_solution,
+export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθφ,discriminant_of_q_solution,
        energy_shell_volume,density_of_states,energy_width_of_coherent_state,
        maximum_P_for_ϵ,maximum_Q_for_ϵ,minimum_energy,minimum_energy_point,
-       normal_frequency,phase_space_dist_squared,ClassicalDickeSystem
+       normal_frequency,phase_space_dist_squared,ClassicalDickeSystem,hamiltonian
     using ..ClassicalSystems
     using ..PhaseSpaces
     using ParameterizedFunctions
@@ -52,7 +52,10 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,discriminant_of_q_solution,
     function ClassicalSystems.varnames(system::ClassicalDickeSystem)
         return varnames
     end
-    
+    function Base.show(io::IO, cds::ClassicalDickeSystem)
+        ω₀,ω,γ=ClassicalSystems.parameters(cds)
+        print(io,"ClassicalDickeSystem(ω₀ = $ω₀, ω = $ω, γ = $γ)")
+    end
     """
     ```julia
     function hamiltonian(system::ClassicalDickeSystem)
@@ -191,12 +194,12 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,discriminant_of_q_solution,
         ω₀,ω,γ=ClassicalSystems.parameters(system)
         Q,q,P,p=x
         θ=PhaseSpaces.θ_of_QP(Q,P)
-        ϕ=PhaseSpaces.ϕ_of_QP(Q,P)
+        φ=PhaseSpaces.φ_of_QP(Q,P)
 
-        Ω₁=j*(ω^2*(q^2+p^2)/2+ω₀^2*sin(θ)^2/2 +2*γ^2*((sin( θ)^2*sin(ϕ)^2+cos(θ)^2)*q^2 + sin(θ)^2*cos(ϕ)^2) +2*γ*q*(ω*cos(ϕ) + ω₀*cos(θ)*cos(ϕ))*sin(θ))
+        Ω₁=j*(ω^2*(q^2+p^2)/2+ω₀^2*sin(θ)^2/2 +2*γ^2*((sin( θ)^2*sin(φ)^2+cos(θ)^2)*q^2 + sin(θ)^2*cos(φ)^2) +2*γ*q*(ω*cos(φ) + ω₀*cos(θ)*cos(φ))*sin(θ))
         #note that the sign of the third term is flipped with respect to Lerma2018, because they use cos θ = jz and we use cos θ = - jz.
 
-        Ω₂=γ^2*(sin(θ)^2*sin(ϕ)^2 + cos(θ)^2)
+        Ω₂=γ^2*(sin(θ)^2*sin(φ)^2 + cos(θ)^2)
         return sqrt(Ω₁ + Ω₂)/j
     end
 
@@ -354,11 +357,11 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,discriminant_of_q_solution,
 
     """
     ```julia
-    function Pointθϕ(;θ,ϕ,q,p)
+    function Pointθφ(;θ,φ,q,p)
     ```
-    Returns a list `[Q,q,P,p]`, where `Q` and `P` are calculated from `θ` and `ϕ` using [`PhaseSpaces.Q_of_θϕ`](@ref) and  [`PhaseSpaces.P_of_θϕ`](@ref).
+    Returns a list `[Q,q,P,p]`, where `Q` and `P` are calculated from `θ` and `φ` using [`PhaseSpaces.Q_of_θφ`](@ref) and  [`PhaseSpaces.P_of_θφ`](@ref).
     """
-    Pointθϕ(;θ,ϕ,q,p)=Point(Q=Q_of_θϕ(θ,ϕ),q=q,P=P_of_θϕ(θ,ϕ),p=p)
+    Pointθφ(;θ,φ,q,p)=Point(Q=Q_of_θφ(θ,φ),q=q,P=P_of_θφ(θ,φ),p=p)
 
     """
     ```julia
@@ -388,9 +391,9 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,discriminant_of_q_solution,
     #             return dst.probability_density(Point(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signoq))/sqrt(Δ(Q,P))
     #         end
     #         function logf(u)
-    #             θ,ϕ,p=u
-    #             Q=PhaseSpaces.Q_of_θϕ(θ,ϕ)
-    #             P=PhaseSpaces.P_of_θϕ(θ,ϕ)
+    #             θ,φ,p=u
+    #             Q=PhaseSpaces.Q_of_θφ(θ,φ)
+    #             P=PhaseSpaces.P_of_θφ(θ,φ)
     #             try
     #                 return log(probability_density([Q,NaN,P,p]))#*sin(θ)?
     #             catch
@@ -398,10 +401,10 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,discriminant_of_q_solution,
     #             end
     #           end
     #
-    #         m = RWMVariate([PhaseSpaces.θ_of_QP(Q,P),PhaseSpaces.ϕ_of_QP(Q,P),p], [1/sqrt(j),1/sqrt(j),1/sqrt(j)],logf,proposal = Normal)
+    #         m = RWMVariate([PhaseSpaces.θ_of_QP(Q,P),PhaseSpaces.φ_of_QP(Q,P),p], [1/sqrt(j),1/sqrt(j),1/sqrt(j)],logf,proposal = Normal)
     #         function sample()
-    #                 θ,ϕ,p=sample!(m)
-    #                 return Point(system,Q=PhaseSpaces.Q_of_θϕ(θ,ϕ),P=PhaseSpaces.P_of_θϕ(θ,ϕ),p=p,ϵ=ϵ,signo=signoq)
+    #                 θ,φ,p=sample!(m)
+    #                 return Point(system,Q=PhaseSpaces.Q_of_θφ(θ,φ),P=PhaseSpaces.P_of_θφ(θ,φ),p=p,ϵ=ϵ,signo=signoq)
     #         end
     #         for i in 1:10000
     #             sample!(m) #bake
@@ -421,7 +424,6 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,discriminant_of_q_solution,
         - `ϵ` is the scaled energy ``ϵ=E/j`` of the energy shell from where to sample.
         - `dt` is the fixed time interval that separates the points that are returned by `sample()`.
         """
-
         function classicalPathRandomSampler(system::ClassicalDickeSystem;ϵ,dt=3)
              ω₀,ω,γ=ClassicalSystems.parameters(system)
              s=sqrt(16*γ^4 + 8*γ^2*ϵ*ω + ω^2*ω₀^2)/(2*γ^2)
@@ -454,8 +456,3 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,discriminant_of_q_solution,
          end
 
 end
-
-
-
-
-

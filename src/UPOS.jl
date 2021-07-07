@@ -522,19 +522,19 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     end
     family_A(sistemaC::ClassicalDickeSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,+),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
  family_B(sistemaC::ClassicalDickeSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,-),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
-    function plot_PO_QP(sis::ClassicalDickeSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
-        for po in F
-
-            u=integrate_PO(po)
-            us=u.u
-            ts=u.t
-            plot!(p,[(i[1],i[3]) for i in us];xlabel="Q",ylabel="P",fontfamily="Times",opts...)
-        end
-        if H!=:nothing
-            contour!(range(-2,stop=2,length=100),range(-2,stop=2,length=100),(Q,P)->ClassicalDicke.minimum_ϵ_for(sis;Q=Q,P=P,p=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
-        end
-        return p
-    end
+    #function plot_PO_QP(sis::ClassicalDickeSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
+#        for po in F
+#
+#            u=integrate_PO(po)
+#            us=u.u
+#            ts=u.t
+#            plot!(p,[(i[1],i[3]) for i in us];xlabel="Q",ylabel="P",fontfamily="Times",opts...)
+#        end
+#        if H!=:nothing
+#            contour!(range(-2,stop=2,length=100),range(-2,stop=2,length=100),(Q,P)->ClassicalDicke.minimum_ϵ_for(sis;Q=Q,P=P,p=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
+#        end
+#        return p
+#    end
     # function plot_PO_QPp(sis::ClassicalDickeSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
     #     for po in F
     #
@@ -569,14 +569,14 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     #     end
     #     return p
     # end
-    function overlap_of_tube_with_homogenous_state(sistemaQ::DickeBCE.QuantumSystem,po::PO;time_integral_tolerance=1e-7,phase_space_integral_resolution=0.1)
+    function overlap_of_tube_with_homogenous_state(sistemaQ::DickeBCE.QuantumDickeSystem,po::PO;time_integral_tolerance=1e-7,phase_space_integral_resolution=0.1)
         orbit=integrate_PO(po,tol=time_integral_tolerance)
         ∫dtHtx(x)=average_over_PO(orbit,u-> DickeBCE.HusimiOfCoherent(sistemaQ,u,x))
         res=phase_space_integral_resolution
         ϵ=ClassicalDicke.hamiltonian(po.sistema)(po.u)
         insidepoints=0
         function f(Q,P)
-            v=DickeHusimiProjections.∫∫dqdpδϵ(sistemaC=po.sistema,ϵ=ϵ,Q=Q,P=P,f=∫dtHtx,nonvalue=NaN,p_res=res)
+            v=DickeHusimiProjections.∫∫dqdpδϵ(po.sistema,ϵ=ϵ,Q=Q,P=P,f=∫dtHtx,nonvalue=NaN,p_res=res)
             if isnan(v)
                 return 0.0
             end
@@ -586,13 +586,12 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         sm=sum( f(Q,P) for Q in -2:res:2, P in -2:res:2)
         return sm/(insidepoints*2*pi)
     end
-    function scarring_measure(sistemaQ::DickeBCE.QuantumSystem,quantum_state::AbstractArray{<:Number,1},po::PO;Htol=1e-3,kargs...)
+    function scarring_measure(sistemaQ::DickeBCE.QuantumDickeSystem,quantum_state::AbstractArray{<:Number,1},po::PO;Htol=1e-3,kargs...)
         POandState=average_over_PO(po,x->DickeBCE.Husimi(sistemaQ,x,quantum_state;tol=Htol))
         POandHomState=overlap_of_tube_with_homogenous_state(sistemaQ,po;phase_space_integral_resolution=0.1,kargs...)
         return POandState/POandHomState
     end
-    function Base.in(u::AbstractArray{<:Number,1}, po::PO)
-        tol=1e-6
+    function Base.in(u::AbstractArray{<:Number,1}, po::PO;tol=1e-6)
         if sum(abs2,u-po.u)<tol
             return true
         end
@@ -611,10 +610,12 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=1e-8,save_everystep=false,callback=cb)
         return result
     end
-    function Base.:(==)(po1::PO,po2::PO)
-        if abs(po1.T-po2.T)>1e-5
+    function Base.:(==)(po1::PO,po2::PO;Ttol=1e-5,tol=1e-6)
+        if abs(po1.T-po2.T)>tol
             return false
         end
-        return po1.u ∈ po2
+        return ∈(po1.u,  po2,tol = tol)
     end
 end
+
+

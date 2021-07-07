@@ -27,8 +27,6 @@ function Selectors.runner(::Type{BibliographyBlock}, x, page, doc)
     @info "Expanding bibliography."
     raw_bib = "<ol class=\"biblist\">"
     for (index,(id, entry)) in enumerate(doc.plugins[CitationBibliography].bib)
-        @info "Expanding bibliography entry: $id."
-
         # Add anchor that citations can link to from anywhere in the docs.
         Anchors.add!(doc.internal.headers, entry, entry.id, page.build)
 
@@ -74,7 +72,6 @@ function expand_citation(link::Markdown.Link, meta, page, doc)
 
     if length(link.text) === 1 && isa(link.text[1], String)
         citation_name = link.text[1]
-        @info "Expanding citation: $citation_name."
 
         if haskey(doc.plugins[CitationBibliography].bib, citation_name)
             entry = doc.plugins[CitationBibliography].bib[citation_name]

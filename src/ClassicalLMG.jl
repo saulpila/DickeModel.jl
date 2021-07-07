@@ -73,7 +73,7 @@ export hamiltonian, Point,ClassicalLMGSystem
         u
     end
     Point(;Q,P)=Point([Q,P])
-    Pointθϕ(;θ,ϕ)=Point(Q=Q_of_θϕ(θ,ϕ),P=P_of_θϕ(θ,ϕ))
+    Pointθφ(;θ,φ)=Point(Q=Q_of_θφ(θ,φ),P=P_of_θφ(θ,φ))
     Point(sistema::ClassicalLMGSystem;Q,ϵ,signo::Union{typeof(-),typeof(+)}=+)=Point(Q=Q,P=P_of_ϵ(sistema;Q=Q,ϵ=ϵ,signo=signo,returnNaNonError=false))
 end
 

@@ -3,6 +3,7 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
+on_github=false
 using Dicke
 ```
 ## Classical evolution of coherent states
@@ -22,7 +23,13 @@ end #hide
 ```
 The functions from [`Dicke.TruncatedWignerApproximation`](@ref Dicke.TruncatedWignerApproximation) will make use
 of all the available workers.
-
+!!! warning 
+    The line 
+    ```julia 
+    @everywhere using Dicke, Dicke.TruncatedWignerApproximation
+    ```
+    is necessary to load  `Dicke.TruncatedWignerApproximation` in all workers. You will get errors if you omit it.
+    
 For our first example, let us consider the Wigner function of a coherent state,
 evolve it classically using the truncated Wigner approximation, and then look at 
 the expected value of the Weyl symbol of the observable ``\hat{j}_z=\hat{J}_z/j`` in time with 
@@ -65,9 +72,12 @@ We can chain several computations using [`TruncatedWignerApproximation.mcs_chain
 For example, let's see the evolution of ``q`` and ``p`` for the same coherent state evolving in time, along with the time-averaged
 distribution in the plane ``q,p``.
 ```@example examples
-qs=-4.2:0.05:4.2
-ps=-2.4:0.05:2.4
+qs=-4.2:0.02:4.2
+ps=-2.4:0.02:2.4
 if !on_github  qs=-4.2:0.5:4.2;ps=-2.4:0.5:2.4 end #hide
+N = 50000
+if !on_github N=200 end #hide
+
 mcs=mcs_chain(
     mcs_for_distributions(
         system; N = N, 
@@ -91,7 +101,8 @@ matrix_q_vs_t,matrix_t_vs_p,matrix_q_vs_p = monte_carlo_integrate(system,
     
 plot(heatmap(qs,times, matrix_q_vs_t,
         color=cgrad(:gist_heat, rev=true),
-        ylabel="time", xlabel="q",xmirror =true,ymirror =true, bottom_margin = -15mm),
+        ylabel="time", xlabel="q", xmirror =true, 
+        ymirror =true, bottom_margin = -15mm),
     heatmap(times,ps, matrix_t_vs_p,
         color=cgrad(:gist_heat, rev=true),
         xlabel="time", ylabel="p", right_margin = -15mm),
@@ -115,10 +126,11 @@ if !on_github N=200 end #hide
 if !on_github times=0:1 end #hide
 
 matrices = calculate_distribution(system; distribution=W, N = N,
-    x=:q,y=:p,xs=qs, ys=ps,ts=times,animate=true,maxNBatch=200000);
+    x=:q, y=:p,xs=qs, ys=ps, ts=times, animate=true, maxNBatch=200000);
 animation=@animate for mat in matrices
     heatmap(qs, ps, mat,
-        color=cgrad(:gist_heat, rev=true),size=(600,600),xlabel="q",ylabel="p",key=false)
+        color = cgrad(:gist_heat, rev=true), size=(600,600), 
+        xlabel="q", ylabel="p", key=false)
 end
 mp4(animation,
     "animation_of_evolution.mp4",
@@ -127,6 +139,19 @@ mp4(animation,
 nothing; #hide
 ```
 ![](animation_of_evolution.mp4)
+!!! note
+    Computing animations with [`calculate_distribution(..., animate = true, ...)`](@ref TruncatedWignerApproximation.calculate_distribution)
+    may need a lot of RAM. You can estimate the maximum amount of RAM needed using the shorthand formula  
+    
+    ``(\text{\# of workers}) \times (\text{length of }`` `xs` ``)\times (\text{length of }`` `ys` ``)\times (\text{length of }`` `ts` ``) \times (64 \text{ bits})``.
+    
+    But this number would only be reached if trajectories filled all of the matrices in all of the workers at all the timesteps. You may stay much
+    below this number by passing `maxNBatch` to [`calculate_distribution`](@ref TruncatedWignerApproximation.calculate_distribution) (or
+    to  [`monte_carlo_integrate`](@ref TruncatedWignerApproximation.monte_carlo_integrate)). This parameter limits the number of trajectories
+    that are calculated in batch in each  worker. Between batches, data is flushed to the main worker, which takes time, but liberates RAM. 
+    If generating the animation is filling up your RAM, try to decrease `maxNBatch`.
+    
+
 ## Fidelity out-of-time order correlator (FOTOC)
 
 The FOTOC is a quantum-equivalent of the classcal Lyapunov exponent. It is just
@@ -143,13 +168,13 @@ system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
 
 ts = 0:0.1:50
 j = 1000
-x = Point(system, Q=-1, P=0, p=0, ϵ=-0.6)
+x = Point(system, Q=1, P=0, p=0, ϵ=-0.6)
 W = coherent_Wigner_HWxSU2(x, j=j)
 N = 10000
 if !on_github N=200 end #hide
 if !on_github times=0:1:10 end #hide
 
-FOTOC=sum.(variance(system; observable=[:Q,:p,:P,:p], 
+FOTOC=sum.(variance(system; observable=[:Q,:q,:P,:p], 
                     distribution=W, N=N, ts=ts, tol=1e-8))
 
 plot(ts, FOTOC, 
@@ -162,7 +187,7 @@ savefig("FOTOC_TWA.svg");nothing #hide.
 ```
 ![](FOTOC_TWA.svg)
 
-## Energy profiles of coherent states
+## [Energy profiles of a coherent state](@id semiclassicalLDoS)
 We have a semiclassical formula for the energy width of a coherent state, given in App. A of Ref. [Lerma2018](@cite),
 and implemented in [`ClassicalDicke.energy_width_of_coherent_state`](@ref). Let's check
 this formula against the semiclassical local density of states given by Eq. (E.3) of Ref. [Villasenor2020](@cite).
@@ -201,3 +226,6 @@ plot!(ϵ->pdf(gaussian,ϵ), ϵs,
 savefig("LDoS_classical.svg");nothing #hide.
 ```
 ![](LDoS_classical.svg)
+
+See [this example](@ref quantumldoscoherentstateex) for the
+full quantum computation of the energy spectrum of a coherent state.

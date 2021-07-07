@@ -2,5 +2,5 @@
 
 ```@autodocs
 Modules = [Dicke.UPOS]
-Order   = [:function, :type]
+Order   = [:type,:function]
 ```

@@ -2,5 +2,5 @@
 
 ```@autodocs
 Modules = [Dicke.PhaseSpaces]
-Order   = [:function, :type]
+Order   = [:type,:function]
 ```

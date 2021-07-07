@@ -8,11 +8,55 @@ using ..ClassicalDicke
 using Statistics
 using Random
 import ProgressMeter
-    function ∫∫dqdpδϵ(;sistemaC::ClassicalDickeSystem,ϵ,Q,P,f,p_res=0.01,nonvalue=nothing,onlyqroot::Union{typeof(-),typeof(+),Nothing}=nothing)
+
+    """
+    ```julia
+    function ∫∫dqdpδϵ(system::ClassicalDickeSystem;
+        ϵ::Real,
+        Q::Real,
+        P::Real,
+        f::Function,
+        p_res::Real=0.01,
+        nonvalue=nothing,
+        onlyqroot::Union{typeof(-),typeof(+),Nothing}=nothing)
+    ```
+    Computes the integral  
+    ```math 
+        \\int \\int dq dp f(\\mathbf{x}) \\delta(h_\\text{cl}(\\mathbf{x}) - \\epsilon)
+    ```
+    using Eq. (8) of Ref. [Pilatowsky2021NatCommun](@cite) and a 
+    [Chebyshev–Gauss quadrature](https://en.wikipedia.org/wiki/Chebyshev%E2%80%93Gauss_quadrature)
+    method.  
+    
+    Note: to type `∫` in Julia, type `\\int` + Tab.
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `ϵ` is a real number corresponding to ``\\epsilon`` above.
+    - `Q` and `P` are the ``Q`` and ``P`` coordinates of ``\\mathbf{x}`` above.
+    - `f` should be function with signature `f([Q,q,P,p])` that returns values that
+      may be added together (Numbers, Arrays etc...).
+    - `p_res` is the resolution of the integral. The amount of nodes for the
+      quadrature will be equal to `2*floor(p₊/p_res) + 1`, where `p₊` is defined
+      below Eq. (9) of Ref. [Pilatowsky2021NatCommun](@cite). Default is `0.01`.
+    - `nonvalue` is the value to return if ``Q,P`` are outside of the energy shell
+      at ``\\epsilon``. Default is `NaN`.
+    - `onlyqroot` may be `+`, `-`, or `nothing` (default). If it is `+` (`-`),
+      the integral is only computed over the positive (negative) roots in `q`, that is,
+      only the ``q_+`` (``q_-``) term is taken in Eq. (8) of Ref. [Pilatowsky2021NatCommun](@cite).
+      If it is `nothing`, both terms are added.
+    """
+    function ∫∫dqdpδϵ(system::ClassicalDickeSystem,
+        ϵ::Real,
+        Q::Real,
+        P::Real,
+        f::Function,
+        p_res::Real=0.01,
+        nonvalue = NaN,
+        onlyqroot::Union{typeof(-),typeof(+),Nothing}=nothing)
         if Q^2+P^2>4
             return nonvalue
         end
-        ω₀, ω, γ=ClassicalSystems.parameters(sistemaC)
+        ω₀, ω, γ=ClassicalSystems.parameters(system)
         val=nonvalue #variable donde vamos a guardar la suma
 
         A= (4*γ^2*Q^2*(1-(Q^2+P^2)/4)  - ω*ω₀*(P^2 + Q^2 - 2) + 2*ω*ϵ)
@@ -29,7 +73,7 @@ import ProgressMeter
             if onlyqroot!==nothing && onlyqroot!==signo
                 continue
             end
-            mf(p)=f(ClassicalDicke.Point(sistemaC,Q=Q,P=P,p=p,ϵ=ϵ,signo=signo))
+            mf(p)=f(ClassicalDicke.Point(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signo))
             for k in 1:n
                 mv= (π/(n*ω)) .* mf(p₊*cos(π*(2*k - 1)/(2n)))
                 if val===nonvalue
@@ -72,8 +116,55 @@ import ProgressMeter
         Qs=minQ:res:lastQ
         return Qs,Ps
     end
-    function matrix_QP∫∫dqdpδϵ(;sistemaC::ClassicalDickeSystem,f,ϵ,res=0.1,symmetricQP=false,symmetricP=symmetricQP,paralelize=(Distributed.myid()==1),nonvalue=NaN,showprogress=true,onlyqroot::Union{typeof(-),typeof(+),Nothing}=nothing,pbatch_size=Int(min(ceil((4/res)^2/Distributed.nprocs()/10),50)))
-        Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,sistemaC,ϵ)
+    """
+    ```julia
+    function matrix_QP∫∫dqdpδϵ(system::ClassicalDickeSystem;
+        f::Function,
+        ϵ::Real,
+        res::Real=0.1,
+        symmetricQP::Bool=false,
+        symmetricP::Bool=symmetricQP,
+        paralelize::Bool=(Distributed.myid()==1),
+        showprogress::Bool = true,
+        pbatch_size::Integer=Int(min(ceil((4/res)^2/Distributed.nprocs()/10),50)))
+    ```
+    Returns  a tuple `(Qs, Ps, mat)` where `Qs` and `Ps` are real vectors spanning
+    all possible values of ``P`` and ``Q`` with some step `res`, and `mat` 
+    is a matrix whose entries are given by
+    `mat[i,j] = `[`∫∫dqdpδϵ(system; ϵ=ϵ, Q=Qs[i], P=P[j], p_res=res,kargs...)`](@ref ∫∫dqdpδϵ)
+
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `ϵ` is a real number (see arguments for [`∫∫dqdpδϵ`](@ref)).
+    - `f` should be function with signature `f([Q,q,P,p])` that returns values that
+      may be added together (Numbers, Arrays etc...).
+    - `res` determines the separation between the elements of `Qs` and `Ps`. It also
+      determines `p_res` in the calls to [`∫∫dqdpδϵ`](@ref).
+    - `symmetricQP` indicates that `f([Q,q,P,p]) = f([-Q,q,P,p]) = f([Q,q,-P,p])` for all `Q` and `P`. If `true`
+      only the non-positive entries of `Q` and `P` will be computed, and the other entries will be mirrored. 
+      Default is `false`.
+    - `symmetricP` indicates that `f([Q,q,-P,p]) = f([Q,q,P,p])` for all `P`. If `true`, only the side with 
+      non-positive `P` coordinate will be comptued, and the other entries will be mirrored. The default is to 
+      be the same that `symmetricQP`.
+    - `paralelize` indicates whether to use all available workers. Defaults to `true` if this function is called 
+      from worker `1`, and `false` else.
+    - `showprogress` turns the progress bar on/off. Default is `true`.
+    - `pbatch_size` is the maximum number of batches to run in a single run in a single worker. The default value is automatically
+      optimized depending on `res` and the number of workers.
+    - `kargs...` are redirected to [`∫∫dqdpδϵ`](@ref).
+    """
+    function matrix_QP∫∫dqdpδϵ(system::ClassicalDickeSystem;
+        f::Function,
+        ϵ::Real,
+        res::Real=0.1,
+        symmetricQP::Bool=false,
+        symmetricP::Bool=symmetricQP,
+        paralelize::Bool=(Distributed.myid()==1),
+        showprogress::Bool = true,
+        pbatch_size::Integer=Int(min(ceil((4/res)^2/Distributed.nprocs()/10),50)),
+        kargs...)
+        
+        Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,system,ϵ)
         QPs=[(Q,P) for P in Ps, Q in Qs]
         if showprogress #revolvemos la matriz para que el ETA del proceso sea más acertada
             is=1:length(Ps)*length(Qs)
@@ -88,7 +179,7 @@ import ProgressMeter
             f(batch_size=pbatch_size,args...)
         end
         mat= (showprogress ? (paralelize ? addbatchsize(ProgressMeter.progress_pmap) : ProgressMeter.map) : (paralelize ? addbatchsize(Distributed.pmap) : map))(QPs) do (Q,P)
-            ∫∫dqdpδϵ(sistemaC=sistemaC,ϵ=ϵ,Q=Q,P=P,f=f,p_res=res,nonvalue=nonvalue,onlyqroot=onlyqroot)
+            ∫∫dqdpδϵ(system;ϵ=ϵ,Q=Q,P=P,f=f,p_res=res,kargs...)
         end
         if showprogress #desrevolvemos
             mat=[mat[ind(revsh[iind(i,j)])...] for i in 1:length(Ps), j in 1:length(Qs)]
@@ -117,11 +208,11 @@ import ProgressMeter
         end
     end
     #states puede ser una matriz de estados, o una matriz de altura 4, en cuyo caso se interpreta a los estados como coherentes centrados en Q,q,P,p (las filas)
-    function _husimi_Renyi_powers(sistemaQ,pt,state,cache,averageallstates;tol=1e-4,averagingfunction=mean,statesAreCentersOfCoherentStates=size(state)[1]==4,αs::AbstractArray{<:Real,1})
+    function _husimi_Renyi_powers(systemQ,pt,state,cache,averageallstates;tol=1e-4,averagingfunction=mean,statesAreCentersOfCoherentStates=size(state)[1]==4,αs::AbstractArray{<:Real,1})
         if statesAreCentersOfCoherentStates
-            cache[1].=DickeBCE.HusimiOfCoherent.((sistemaQ,),eachcol(state),(pt,))
+            cache[1].=DickeBCE.HusimiOfCoherent.((systemQ,),eachcol(state),(pt,))
         else
-            cache[1].=DickeBCE.Husimi(sistemaQ,pt,state;tol=tol,datacache=cache[1]) #asignamos porque puede pasar que cache[1] sea un numero,
+            cache[1].=DickeBCE.Husimi(systemQ,pt,state;tol=tol,datacache=cache[1]) #asignamos porque puede pasar que cache[1] sea un numero,
                                                                                 #en cuyo caso datacache no se usa
         end
         if averageallstates
@@ -136,7 +227,32 @@ import ProgressMeter
         end
         return cache
     end
-    function ∫∫dqdpδϵ_husimi_Renyi_powers(;sistemaQ::DickeBCE.QuantumSystem,states::Union{Array{<:Number,1},Array{<:Number,2}},res,Htol=1e-4,nonvalue=NaN,averageallstates=false,averagingfunction=mean,α::Union{AbstractArray{<:Real,1},Real}=2,kargs...)
+    """
+    ```julia
+    function ∫∫dqdpδϵ_Husimi_Renyi_powers(
+        systemQ::DickeBCE.QuantumDickeSystem;
+        states::Union{Array{<:Number,1},Array{<:Number,2}},
+        res::Real,
+        Htol::Real=1e-4,
+        nonvalue=NaN,
+        averageallstates::Bool=false,
+        averagingfunction::Function=mean,
+        α::Union{AbstractArray{<:Real,1},Real}=2,
+        kargs...)
+    ```
+    Calls matrix_QP∫∫dqdpδϵ PENDING
+
+    """
+    function ∫∫dqdpδϵ_Husimi_Renyi_powers(systemQ::DickeBCE.QuantumDickeSystem;
+        states::Union{Array{<:Number,1},Array{<:Number,2}},
+        res::Real,
+        Htol::Real=1e-4,
+        nonvalue=NaN,
+        averageallstates::Bool=false,
+        averagingfunction::Function=mean,
+        α::Union{AbstractArray{<:Real,1},Real}=2,
+        kargs...)
+        
         if ! isa(α, AbstractArray)
             α=[α]
         end
@@ -148,11 +264,21 @@ import ProgressMeter
             end
         end
         cache=[gencache() for i in 1:(length(α)+1)]
-        Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(;f=(pt -> _husimi_Renyi_powers(sistemaQ,pt,states,cache,averageallstates;tol=Htol,averagingfunction=averagingfunction,αs=α)),res=res,nonvalue=nonvalue,kargs...)
+        Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(;f=(pt -> _husimi_Renyi_powers(systemQ,pt,states,cache,averageallstates;tol=Htol,averagingfunction=averagingfunction,αs=α)),res=res,nonvalue=nonvalue,kargs...)
         matlist=[[m===nonvalue ? nonvalue : real.(m[i]) for m in mat] for i in  1:(length(α)+1)]
         return Qs,Ps,matlist
     end
-    function loc_measure_and_proj_husimi_QP_matrix(;sistemaQ::DickeBCE.QuantumSystem,states::Union{Array{<:Number,1},Array{<:Number,2}},res,Htol=1e-4,nonvalue=NaN,_transposematrixoflistintolistofmatrices=true,averageallstates=false,averagingfunction=mean,α::Union{AbstractArray{<:Real,1},Real}=2,matrix_powers::Union{AbstractArray{<:Real,1},Real}=1,kargs...)
+    function loc_measure_and_proj_husimi_QP_matrix(systemQ::DickeBCE.QuantumDickeSystem;
+        states::Union{Array{<:Number,1},Array{<:Number,2}},
+        res::Real,
+        Htol::Real=1e-4,
+        nonvalue=NaN,
+        averageallstates::Bool=false,
+        averagingfunction::Function=mean,
+        α::Union{AbstractArray{<:Real,1},Real}=2,
+        matrix_powers::Union{AbstractArray{<:Real,1},Real}=1,
+        _transposematrixoflistintolistofmatrices::Bool=true,
+        kargs...)
         if ! isa(α, AbstractArray)
             α=[α]
         end
@@ -183,7 +309,7 @@ import ProgressMeter
                 resultlength=length(d)
             end
         end
-        Qs,Ps,matlist=  ∫∫dqdpδϵ_husimi_Renyi_powers(;sistemaQ=sistemaQ,states=states,res=res,Htol=Htol,nonvalue=nonvalue,averageallstates=averageallstates,averagingfunction=averagingfunction,α=α,kargs...)
+        Qs,Ps,matlist=  ∫∫dqdpδϵ_Husimi_Renyi_powers(systemQ;states=states,res=res,Htol=Htol,nonvalue=nonvalue,averageallstates=averageallstates,averagingfunction=averagingfunction,α=α,kargs...)
         L=loc_measure_from_matrices(matlist,nonvalue=nonvalue,α=α)
         if _transposematrixoflistintolistofmatrices
             matproj=[[Union{typeof(nonvalue),Float64}[m===nonvalue ? nonvalue : m[i] for m in matlist[findfirst(α->α==mp,[1;α])]] for mp in matrix_powers] for i in 1:resultlength]
@@ -259,13 +385,19 @@ import ProgressMeter
     function proj_husimi_QP_matrix(;kargs...)
         return loc_measure_and_proj_husimi_QP_matrix(;α=Real[],kargs...)[2]
     end
-    function energy_shell_average(;sistemaC::ClassicalDickeSystem,ϵ,f,res=0.01,symmetricQP=false,symmetricP=symmetricQP)
+    function energy_shell_average(system::ClassicalDickeSystem;
+        ϵ::Real,
+        f::Function,
+        res::Real=0.01,
+        symmetricQP::Bool=false,
+        symmetricP::Bool=symmetricQP)
+        
         t=0.0
         ft=nothing
 
-        Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,sistemaC,ϵ)
+        Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,system,ϵ)
         for Q in Qs, P in Ps
-            v=∫∫dqdpδϵ(;sistemaC=sistemaC,ϵ=ϵ,Q=Q,P=P,f=f,p_res=res,nonvalue=nothing)
+            v=∫∫dqdpδϵ(system,ϵ=ϵ,Q=Q,P=P,f=f,p_res=res,nonvalue=nothing)
             if !(v===nothing)
                 add=2pi
                 if Q!=0 && symmetricQP
@@ -287,44 +419,8 @@ import ProgressMeter
         return ft/t
     end
 
-    #esto pensaria que es más rápido pero en realidad no
- #   function LocMeasureNoMatrix(;sistemaQ::DickeBCE.QuantumSystem,sistemaC::ClassicalDickeSystem,ϵ,state,res=0.1,Htol=1e-4,symmetricQP=true)
- #       last=0
- #       if !symmetricQP
- #           last=2
- #       end
- #       Ps=-2:res:last
- #       Qs=-2:res:last
- #       ∫Q2=0
- #       ∫Q=0
- #       ∫1=0
- #       function f(pt)
- #           h=DickeBCE.Husimi(sistemaQ,pt,state;tol=Htol)
- #           return [1,h,h^2]
- #       end
- #       for P in Ps, Q in Qs
- #           v=∫∫dqdpδϵ(sistemaC=sistemaC,ϵ=ϵ,Q=Q,P=P,f=f,p_res=res)
- #           if v!=nothing
- #               ∫1+=v[1]*res^2
- #               ∫Q+=v[2]*res^2
- #               ∫Q2+=v[3]*res^2
- #           end
- #       end
- #       return (∫Q^2)/(∫1*∫Q2)
- #   end
- #   function projHusimiqpMatrixNoL(;sistemaQ::DickeBCE.QuantumSystem,states::Union{Array{<:Number,1},Array{<:Number,2}},Htol=1e-4,nonvalue=NaN,_transposematrixoflistintolistofmatrices=true,kargs...)
- #       if length(size(states))==1
- #           cache=nothing
- #       else
- #           cache=zeros(Complex{Float64},size(states)[2])
- #       end
- #       Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(;f=pt->DickeBCE.Husimi(sistemaQ,pt,states;tol=Htol,datacache=cache),nonvalue=nonvalue,kargs...)
- #       mat=[m===nonvalue ? nonvalue : real.(m) for m in mat]
- #       if length(size(states))>1 && _transposematrixoflistintolistofmatrices
- #           mat=[[m===nonvalue ? nonvalue : m[i] for m in mat] for i in 1:(size(states)[2])]
- #       end
- #       return Qs,Ps,mat
- #   end
 end
+
  
 
+ 

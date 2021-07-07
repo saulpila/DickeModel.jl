@@ -2,5 +2,5 @@
 
 ```@autodocs
 Modules = [Dicke.DickeHusimiProjections]
-Order   = [:function, :type]
+Order   = [:type,:function]
 ```

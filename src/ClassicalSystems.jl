@@ -56,20 +56,19 @@ function integrate(system::ClassicalSystem;t::Real,
                    integate_backwards::Bool=false,
                    kargs...)
 ```
-This function integrates initial condition `u₀` from `t₀` to `t` under the Hamiltonian system determined by `system`, returning an instance of `ODESolution` from the
-    package `DifferentialEquations` (See https://diffeq.sciml.ai/dev/basics/solution/).
+This function integrates initial condition `u₀` from `t₀` to `t` under the Hamiltonian system determined by `system`, returning an instance of [`OrdinaryDiffEq.ODESolution`](https://diffeq.sciml.ai/dev/basics/solution/).
 
 # Arguments:
 - `system` is an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
 - `u₀` is an array which codifies the initial condition `[Q,q,P,p]` for `ClassicalDicke` and `[Q,P]` for `ClassicalLMG`.
 - `t` is the start time of the integration.
 - `t₀` is the start of the integration (defaults to `t₀ = 0.0`) [`ClassicalSystems.ClassicalSystem`](@ref).
-- `tol` is the tolerance for the integration, which determines both `abstol` and `reltol` in https://diffeq.sciml.ai/stable/basics/common_solver_opts/
+- `tol` is the tolerance for the integration, which determines both `abstol` and `reltol` in [`OrdinaryDiffEq.solve`](https://diffeq.sciml.ai/stable/basics/common_solver_opts/)
 - `get_fundamental_matrix` determines whether to also compute the fundametal matrix of the system. If `true`, the result at each time is an [`ArrayPartition(x,Φ)`](https://diffeq.sciml.ai/stable/features/diffeq_arrays/#ArrayPartitions), so that `x=result.x[2]` retrieves the coordinate and `Ψ=result.x[2]` retrieves the fundamental matrix. Default is `false`. Note that the integration is consideribly slowed down if this parameter is set to `true`.
-- `integrator_alg` is the integration algorithm to use. Defaults to `TsitPap8` (Tsitouras-Papakostas 8/7 Runge-Kutta method). See https://diffeq.sciml.ai/stable/solvers/ode_solve/#Full-List-of-Methods for other options.
+- `integrator_alg` is the integration algorithm to use. Defaults to `TsitPap8` (Tsitouras-Papakostas 8/7 Runge-Kutta method). See [the `DifferentialEquations` documentation](https://diffeq.sciml.ai/stable/solvers/ode_solve/#Full-List-of-Methods) for other options.
 - `use_big_numbers` forces the integration to be performed with `BigFloat` instead of `Float`, allowing for infinite numerical precision, but hindering speed substantially. Defaults to `false`.
 - `integate_backwards` tells the integrator to integrate back in time, from `-t₀` to `-t`. Defaults to  `false`.
-- Additional `kargs` are passed to `OrdinaryDiffEq.solve` (see https://diffeq.sciml.ai/stable/basics/common_solver_opts/).
+- Additional `kargs` are passed to [`OrdinaryDiffEq.solve`](https://diffeq.sciml.ai/stable/basics/common_solver_opts/).
 """
  function integrate(system::ClassicalSystem;t::Real,
                             u₀::AbstractArray{<:Real, 1},
@@ -172,12 +171,3 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
         return lyapunov_spectrum(v...)
      end
 end
-
-
-
-
-
-
-
-
-

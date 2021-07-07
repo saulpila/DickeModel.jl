@@ -3,6 +3,7 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
+on_github=false
 using Dicke
 ```
 

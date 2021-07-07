@@ -696,16 +696,16 @@ module TruncatedWignerApproximation
         σ=sqrt(ħ/2)
         gaussiana_Θ=Distributions.Normal(0, σ)
         Rayleigh_Θ=Distributions.Rayleigh(σ)
-        R(θ,ϕ,θ0,ϕ0)= #rotacion que manda el polo norte a θ0,ϕ0 aplicada a θ,ϕ
-            [atan(sqrt((cos(θ0)*cos(ϕ)*sin(θ)-cos(θ)*sin(θ0))^2+sin(θ)^2*sin(ϕ)^2),cos(θ)*cos(θ0)+cos(ϕ)*sin(θ)*sin(θ0)),
-            mod(atan(-cos(ϕ0)*sin(θ)*sin(ϕ)-cos(θ0)*cos(ϕ)*sin(θ)*sin(ϕ0)+cos(θ)*sin(θ0)*sin(ϕ0),-cos(θ0)*cos(ϕ)*cos(ϕ0)*sin(θ)+cos(θ)*cos(ϕ0)*sin(θ0)+sin(θ)*sin(ϕ)*sin(ϕ0)),2*pi)]
+        R(θ,φ,θ0,φ0)= #rotacion que manda el polo norte a θ0,φ0 aplicada a θ,φ
+            [atan(sqrt((cos(θ0)*cos(φ)*sin(θ)-cos(θ)*sin(θ0))^2+sin(θ)^2*sin(φ)^2),cos(θ)*cos(θ0)+cos(φ)*sin(θ)*sin(θ0)),
+            mod(atan(-cos(φ0)*sin(θ)*sin(φ)-cos(θ0)*cos(φ)*sin(θ)*sin(φ0)+cos(θ)*sin(θ0)*sin(φ0),-cos(θ0)*cos(φ)*cos(φ0)*sin(θ)+cos(θ)*cos(φ0)*sin(θ0)+sin(θ)*sin(φ)*sin(φ0)),2*pi)]
 
 
         centroθ=PhaseSpaces.θ_of_QP(Q₀,P₀)
-        centroϕ=PhaseSpaces.ϕ_of_QP(Q₀,P₀)
-        function Wθ(θ,ϕ)
+        centroφ=PhaseSpaces.φ_of_QP(Q₀,P₀)
+        function Wθ(θ,φ)
             try
-                Θ=acos(cos(θ)*cos(centroθ)+ sin(θ)*sin(centroθ)*cos(ϕ - centroϕ))
+                Θ=acos(cos(θ)*cos(centroθ)+ sin(θ)*sin(centroθ)*cos(φ - centroφ))
                 return Distributions.pdf(gaussiana_Θ,Θ)*sqrt(2*π)*σ *(1/(2*π*σ^2))
             catch
                 return 0
@@ -715,8 +715,8 @@ module TruncatedWignerApproximation
             try
 
                  θ=PhaseSpaces.θ_of_QP(Q,P)
-                 ϕ=PhaseSpaces.ϕ_of_QP(Q,P)
-                 return Wθ(θ,ϕ)
+                 φ=PhaseSpaces.φ_of_QP(Q,P)
+                 return Wθ(θ,φ)
             catch
                 return 0
             end
@@ -725,8 +725,8 @@ module TruncatedWignerApproximation
 
         function sample()
             Θ=Distributions.rand(Rayleigh_Θ)
-            θ,ϕ = R(Θ,rand()*2*pi,centroθ,centroϕ)
-            return [PhaseSpaces.Q_of_θϕ(θ,ϕ),PhaseSpaces.P_of_θϕ(θ,ϕ)]
+            θ,φ = R(Θ,rand()*2*pi,centroθ,centroφ)
+            return [PhaseSpaces.Q_of_θφ(θ,φ),PhaseSpaces.P_of_θφ(θ,φ)]
         end
         return PhaseSpaceDistribution(W,sample,ħ)
     end
@@ -803,8 +803,8 @@ module TruncatedWignerApproximation
                 SymEngine.@vars Q P
                 cosθ=(P^2+Q^2)/2-1
                 sinθ=sqrt(1-cosθ^2)
-                cosϕ=Q/sqrt(P^2 + Q^2)
-                sinϕ=-P/sqrt(P^2 + Q^2)
+                cosφ=Q/sqrt(P^2 + Q^2)
+                sinφ=-P/sqrt(P^2 + Q^2)
                 $ex
             end
             return esc(q)
@@ -825,7 +825,7 @@ module TruncatedWignerApproximation
         Returns the Weyl symbol of the operator ``\\hat{J}_x``. (See p. 114 of Ref. [Varilly1989](@cite))
         """
         function Jx(j::Real)
-            return @SU2angles sqrt(j*(j+1))*sinθ*cosϕ
+            return @SU2angles sqrt(j*(j+1))*sinθ*cosφ
         end
         """
         ```julia
@@ -834,7 +834,7 @@ module TruncatedWignerApproximation
         Returns the Weyl symbol of the operator ``\\hat{J}_y``. (See p. 114 of Ref. [Varilly1989](@cite))
         """
         function Jy(j::Real)
-            return @SU2angles sqrt(j*(j+1))*sinθ*sinϕ
+            return @SU2angles sqrt(j*(j+1))*sinθ*sinφ
         end
         """
         ```julia
@@ -854,7 +854,7 @@ module TruncatedWignerApproximation
         """
         function Jx²(j::Real)
             bj=sqrt(j*(j+1)*(2*j-1)*(2*j+3))
-            return @SU2angles (j*(j+1))/3 + (bj/2)*((sinθ*cosϕ)^2 - 1/3)
+            return @SU2angles (j*(j+1))/3 + (bj/2)*((sinθ*cosφ)^2 - 1/3)
         end
         """
         ```julia
@@ -864,7 +864,7 @@ module TruncatedWignerApproximation
         """
         function Jy²(j::Real)
             bj=sqrt(j*(j+1)*(2*j-1)*(2*j+3))
-            return @SU2angles (j*(j+1))/3 + (bj/2)*((sinθ*sinϕ)^2 - 1/3)
+            return @SU2angles (j*(j+1))/3 + (bj/2)*((sinθ*sinφ)^2 - 1/3)
         end
     end
 end

@@ -2,5 +2,5 @@
 
 ```@autodocs
 Modules = [Dicke.ClassicalLMG]
-Order   = [:function, :type]
+Order   = [:type,:function]
 ```
