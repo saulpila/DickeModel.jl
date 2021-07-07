@@ -85,22 +85,22 @@ export H_BCE, Husimi, HusimiOfCoherent, QuantumDickeSystem, diagonalization, coh
     """
     dimension(system::QuantumDickeSystem) = Int(2*system.j +1)*system.Nmax
     ind(n,m,N,j)= n*(N+1)+Int(m+j) +1 #+1 because Julia counts from 1.
-    function logfact(n::Int)::Float64
+    function logfact(n::Real)::Float64
         if n==0
             return 0.0
         end
         return sum(log(i) for i in 1:n)
     end
-    function _sqrt_factorial(n::Int)
+    function _sqrt_factorial(n::Real)
         if n==0
             return 1
         end
         prod(sqrt(i) for i in 1:n)
     end
-    function _sqrt_binomial(n::Int,k::Int)
+    function _sqrt_binomial(n::Real,k::Real)
         return exp(_sqrt_binomiallog(n,k))
     end
-    function _sqrt_binomiallog(n::Int,k::Int)
+    function _sqrt_binomiallog(n::Real,k::Real)
         return (logfact(n)-logfact(k)-logfact(n-k))/2
     end
     function get_params(system::QuantumDickeSystem;warning_on_NmaxNothing=true)
