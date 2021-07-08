@@ -113,7 +113,7 @@ plot(heatmap(qs,times, matrix_q_vs_t,
                      ° °]), 
     color=cgrad(:gist_heat, rev=true),
     size=(800,800),colorbar=:none,link=:both)
-savefig("distribution_qptime_TWA.svg");nothing #hide.
+savefig("distribution_qptime_TWA.svg");nothing #hide
 ```
 ![](distribution_qptime_TWA.svg)
 
@@ -183,7 +183,7 @@ plot(ts, FOTOC,
 lyapunov = lyapunov_exponent(system, u₀=x)
 plot!(t->exp(2*lyapunov*t)*2/j, 0, 14, 
     label="exp(2λt)*2ħ", key=:bottomright)
-savefig("FOTOC_TWA.svg");nothing #hide.
+savefig("FOTOC_TWA.svg");nothing #hide
 ```
 ![](FOTOC_TWA.svg)
 
@@ -223,7 +223,7 @@ plot(ϵs,ρ, label="∫ w(x) δ(ϵ - h(x)) dx")
 plot!(ϵ->pdf(gaussian,ϵ), ϵs, 
     label="normal(σ)", linestyle=:dash,
     xlabel="ϵ", ylabel="Probability density")
-savefig("LDoS_classical.svg");nothing #hide.
+savefig("LDoS_classical.svg");nothing #hide
 ```
 ![](LDoS_classical.svg)
 

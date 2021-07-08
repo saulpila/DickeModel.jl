@@ -84,7 +84,7 @@ export H_BCE, Husimi, HusimiOfCoherent, QuantumDickeSystem, diagonalization, coh
     of the Hilbert space.
     """
     dimension(system::QuantumDickeSystem) = Int(2*system.j +1)*system.Nmax
-    ind(n,m,N,j)= n*(N+1)+Int(m+j) +1 #+1 because Julia counts from 1.
+    ind(n,m,N,j)= Int(n*(N+1)+Int(m+j)) +1 #+1 because Julia counts from 1.
     function logfact(n::Real)::Float64
         if n==0
             return 0.0

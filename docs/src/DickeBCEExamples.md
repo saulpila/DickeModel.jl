@@ -36,11 +36,12 @@ nothing; #hide
 This saves the diagonalization to disk, so next time you can do:
 ```@example examples
 systemQ = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j = 30) 
+eigenenergies,eigenstates =  0,0 #hide
 if !use_current_dir_for_diags_and_remove #hide
 @time eigenenergies,eigenstates =  diagonalization(systemQ)
 else #hide
 @time eigenenergies,eigenstates =  diagonalization(systemQ,cache_folder=cache_fold_name) #hide
-rm(cache_fold_name,recursive=true)
+rm(cache_fold_name,recursive=true)#hide
 end #hide
 nothing; #hide
 ```
