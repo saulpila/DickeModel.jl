@@ -1,5 +1,5 @@
 module ClassicalDicke
-export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθφ,discriminant_of_q_solution,
+export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q_solution,
        energy_shell_volume,density_of_states,energy_width_of_coherent_state,
        maximum_P_for_ϵ,maximum_Q_for_ϵ,minimum_energy,minimum_energy_point,
        normal_frequency,phase_space_dist_squared,ClassicalDickeSystem,hamiltonian
@@ -194,12 +194,12 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθφ,discriminant_of_q_solution,
         ω₀,ω,γ=ClassicalSystems.parameters(system)
         Q,q,P,p=x
         θ=PhaseSpaces.θ_of_QP(Q,P)
-        φ=PhaseSpaces.φ_of_QP(Q,P)
+        ϕ=PhaseSpaces.ϕ_of_QP(Q,P)
 
-        Ω₁=j*(ω^2*(q^2+p^2)/2+ω₀^2*sin(θ)^2/2 +2*γ^2*((sin( θ)^2*sin(φ)^2+cos(θ)^2)*q^2 + sin(θ)^2*cos(φ)^2) +2*γ*q*(ω*cos(φ) + ω₀*cos(θ)*cos(φ))*sin(θ))
+        Ω₁=j*(ω^2*(q^2+p^2)/2+ω₀^2*sin(θ)^2/2 +2*γ^2*((sin( θ)^2*sin(ϕ)^2+cos(θ)^2)*q^2 + sin(θ)^2*cos(ϕ)^2) +2*γ*q*(ω*cos(ϕ) + ω₀*cos(θ)*cos(ϕ))*sin(θ))
         #note that the sign of the third term is flipped with respect to Lerma2018, because they use cos θ = jz and we use cos θ = - jz.
 
-        Ω₂=γ^2*(sin(θ)^2*sin(φ)^2 + cos(θ)^2)
+        Ω₂=γ^2*(sin(θ)^2*sin(ϕ)^2 + cos(θ)^2)
         return sqrt(Ω₁ + Ω₂)/j
     end
 
@@ -357,11 +357,12 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθφ,discriminant_of_q_solution,
 
     """
     ```julia
-    function Pointθφ(;θ,φ,q,p)
+    function Pointθϕ(;θ,ϕ,q,p)
     ```
-    Returns a list `[Q,q,P,p]`, where `Q` and `P` are calculated from `θ` and `φ` using [`PhaseSpaces.Q_of_θφ`](@ref) and  [`PhaseSpaces.P_of_θφ`](@ref).
+    Returns a list `[Q,q,P,p]`, where `Q` and `P` are calculated from `θ` and `ϕ` using [`PhaseSpaces.Q_of_θϕ`](@ref) and  [`PhaseSpaces.P_of_θϕ`](@ref).
     """
-    Pointθφ(;θ,φ,q,p)=Point(Q=Q_of_θφ(θ,φ),q=q,P=P_of_θφ(θ,φ),p=p)
+    Pointθϕ(;θ,ϕ,q,p)=Point(Q=Q_of_θϕ(θ,ϕ),q=q,P=P_of_θϕ(θ,ϕ),p=p)
+    Pointθφ(;θ,φ,q,p)=Pointθϕ(θ=θ,ϕ=φ,q=q,p=p)
 
     """
     ```julia
@@ -391,9 +392,9 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθφ,discriminant_of_q_solution,
     #             return dst.probability_density(Point(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signoq))/sqrt(Δ(Q,P))
     #         end
     #         function logf(u)
-    #             θ,φ,p=u
-    #             Q=PhaseSpaces.Q_of_θφ(θ,φ)
-    #             P=PhaseSpaces.P_of_θφ(θ,φ)
+    #             θ,ϕ,p=u
+    #             Q=PhaseSpaces.Q_of_θϕ(θ,ϕ)
+    #             P=PhaseSpaces.P_of_θϕ(θ,ϕ)
     #             try
     #                 return log(probability_density([Q,NaN,P,p]))#*sin(θ)?
     #             catch
@@ -401,10 +402,10 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθφ,discriminant_of_q_solution,
     #             end
     #           end
     #
-    #         m = RWMVariate([PhaseSpaces.θ_of_QP(Q,P),PhaseSpaces.φ_of_QP(Q,P),p], [1/sqrt(j),1/sqrt(j),1/sqrt(j)],logf,proposal = Normal)
+    #         m = RWMVariate([PhaseSpaces.θ_of_QP(Q,P),PhaseSpaces.ϕ_of_QP(Q,P),p], [1/sqrt(j),1/sqrt(j),1/sqrt(j)],logf,proposal = Normal)
     #         function sample()
-    #                 θ,φ,p=sample!(m)
-    #                 return Point(system,Q=PhaseSpaces.Q_of_θφ(θ,φ),P=PhaseSpaces.P_of_θφ(θ,φ),p=p,ϵ=ϵ,signo=signoq)
+    #                 θ,ϕ,p=sample!(m)
+    #                 return Point(system,Q=PhaseSpaces.Q_of_θϕ(θ,ϕ),P=PhaseSpaces.P_of_θϕ(θ,ϕ),p=p,ϵ=ϵ,signo=signoq)
     #         end
     #         for i in 1:10000
     #             sample!(m) #bake
