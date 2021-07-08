@@ -140,10 +140,9 @@ import ProgressMeter
       may be added together (Numbers, Arrays etc...).
     - `res` determines the separation between the elements of `Qs` and `Ps`. It also
       determines `p_res` in the calls to [`∫∫dqdpδϵ`](@ref).
-    - `symmetricQP` indicates that `f([Q,q,P,p]) = f([-Q,q,P,p]) = f([Q,q,-P,p])` for all `Q` and `P`. If `true`
-      only the non-positive entries of `Q` and `P` will be computed, and the other entries will be mirrored. 
-      Default is `false`.
-    - `symmetricP` indicates that `f([Q,q,-P,p]) = f([Q,q,P,p])` for all `P`. If `true`, only the side with 
+    - If `symmetricQP` is `true`, only the non-positive entries of `Q` and `P` will be computed, 
+      and the other entries will be mirrored. Default is `false`.
+    - If `symmetricP` is `true`, only the side with 
       non-positive `P` coordinate will be comptued, and the other entries will be mirrored. The default is to 
       be the same that `symmetricQP`.
     - `paralelize` indicates whether to use all available workers. Defaults to `true` if this function is called 
@@ -421,6 +420,3 @@ import ProgressMeter
 
 end
 
- 
-
- 

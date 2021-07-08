@@ -33,6 +33,12 @@ makedocs(bib,
                 ],
                 "References" => "references.md"
                ])
+
+cache_fold_name = "build/diags"   
+rm(cache_fold_name,recursive=true,force=true)
+
+
+
 deploydocs(;
     repo="github.com/saulpila/Dicke.jl",
 )

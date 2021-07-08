@@ -4,15 +4,15 @@
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 cache_fold_name="./diags"
-use_current_dir_for_diags_and_remove=on_github
-on_github=false
+use_current_dir_for_diags=on_github
 using Dicke
 ```
 The module [`Dicke.DickeBCE`](@ref Dicke.DickeBCE) works with the quantum Dicke model
 using a very efficient basis known as the coherent efficient basis (BCE for its acronym in Spanish).
 See Refs. [Bastarrachea2014PSa](@cite) and [Bastarrachea2014PSb](@cite) for a detailed explanation on how and why it works. 
 Throughout this examples, we will work with a system size of `j = 30`, but  using this module you can easily go up
-to `j = 100` (and probably beyond, depending on the energy regime you are interested in studying).
+to `j = 100`, as done in Refs. [Pilatowsky2021](@cite), [Pilatowsky2021NatCommun](@cite),  [Villasenor2021](@cite).
+
 ## Diagonalizing the Dicke Hamiltonian
 Let us start by defining our parameters:
 
@@ -25,7 +25,7 @@ nothing; #hide
 To load the eigenbasis, simply use [`diagonalization`](@ref Dicke.DickeBCE.diagonalization):
 
 ```@example examples
-if !use_current_dir_for_diags_and_remove #hide
+if !use_current_dir_for_diags #hide
 @time eigenenergies,eigenstates =  diagonalization(systemQ)
 else #hide
 @time eigenenergies,eigenstates =  diagonalization(systemQ, cache_folder=cache_fold_name)  #hide
@@ -37,11 +37,10 @@ This saves the diagonalization to disk, so next time you can do:
 ```@example examples
 systemQ = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j = 30) 
 eigenenergies,eigenstates =  0,0 #hide
-if !use_current_dir_for_diags_and_remove #hide
+if !use_current_dir_for_diags #hide
 @time eigenenergies,eigenstates =  diagonalization(systemQ)
 else #hide
 @time eigenenergies,eigenstates =  diagonalization(systemQ,cache_folder=cache_fold_name) #hide
-rm(cache_fold_name,recursive=true)#hide
 end #hide
 nothing; #hide
 ```
