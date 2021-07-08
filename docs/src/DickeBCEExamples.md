@@ -171,7 +171,7 @@ By passing `tol=0` we are allowing for no optimization. The code has to build al
 the coefficients of the coherent state and then multiply them by each coefficient in `random_vectors`.
 However, if we allow `tol` to be slightly bigger, things will speed up significantly:
 ```@repl randstateHusimi
-@time Husimi(system, x, random_vectors, tol=1e-15)
+@time Husimi(system, x, random_vectors, tol=1e-14)
 ```
 Note that the results barely changed, but this time it used a lot less memory and time. The `tol` argument tells the code it can *chop* a portion of size `tol` off the tails of the distribution of the coherent state (see Ref. [Pilatowsky2020Notes](@cite) for details). You loose almost no information, 
 and you gain a lot of time. The default is `tol = 1e-6`, which gives enough precision
