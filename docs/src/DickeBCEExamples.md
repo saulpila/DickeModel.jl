@@ -5,7 +5,6 @@ push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 cache_fold_name="./diags"
 use_current_dir_for_diags=on_github
-on_github=false
 using Dicke
 ```
 The module [`Dicke.DickeBCE`](@ref Dicke.DickeBCE) works with the quantum Dicke model
