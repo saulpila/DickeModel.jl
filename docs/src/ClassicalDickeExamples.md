@@ -3,6 +3,7 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
+on_github=false
 using Dicke
 ```
 
@@ -30,7 +31,7 @@ using Plots
 system = ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
 ν(ϵ) = density_of_states(system, j=100, ϵ=ϵ)
 ϵgs = minimum_energy(system)
-plot(ν, ϵgs, 2, xlabel="ϵ", ylabel="Density of States")
+plot(ν, ϵgs:0.01:2, xlabel="ϵ", ylabel="Density of States")
 plot!(key=false) #hide
 savefig("density_of_states.svg"); nothing #hide
 ```
@@ -61,7 +62,7 @@ callback=ContinuousCallback((x, t, _) -> x[4], #when p=x[4] is 0,
     save; #execute the function save
     save_positions=(false,false), abstol=1e-3)
 ϵ = -1.35
-for Q in 0:0.02:maximum_Q_for_ϵ(system, ϵ) #for a bunch of initial Qs,
+for Q in minimum_nonnegative_Q_for_ϵ(system,ϵ):0.02:maximum_Q_for_ϵ(system, ϵ) #for a bunch of initial Qs,
         if minimum_ϵ_for(system, P=0, p=0, Q=Q) > ϵ
             continue
         end
@@ -90,15 +91,15 @@ using DiffEqBase
 system = ClassicalDickeSystem(ω=0.8, γ=0.8, ω₀=1)
 ϵ = -1.35
 
-resolution = 0.01 #making this smaller will make a smoother plot,
+n_points = 100 #making this greater will make a smoother plot,
                   #but it may take time!
-if !on_github resolution = 0.5 end #hide
+if !on_github n_points = 2 end #hide
 
-maxQ = maximum_Q_for_ϵ(system,ϵ) 
+maxQ = maximum_Q_for_ϵ(system,ϵ)
+minQ = minimum_nonnegative_Q_for_ϵ(system,ϵ) 
 maxP = maximum_P_for_ϵ(system,ϵ) 
-
-Qs = 0.6:resolution:maxQ
-Ps = 0.0:resolution:maxP  #we only compute the top half of 
+Qs = range(minQ, maxQ, length = n_points)
+Ps = range(0, maxP, length = n_points)  #we only compute the top half of 
                           #the plane, and later mirror it
 
 #this matrix contains NaNs (outside of bounds) and tuples [λ,n] 

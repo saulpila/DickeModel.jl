@@ -1,6 +1,11 @@
 module UPOS
 
-export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_UPO_keep_P,fix_UPO_keep_energy
+export PO,search_in_interval,approximate_period,
+        get_period,follow_PO_family_from_period,
+        find_p_zero,integrate_PO,monodromy_method_constant_period,
+        monodromy_method_constant_energy,po_coordinates,QP,qp,QPp,QPq,mirror_Qq,
+        mirror_Pp,scarring_measure,lyapunov,follow_PO_family_from_energy,energy,
+        family_A,family_B
     using ..ClassicalSystems
     using ..ClassicalDicke
     using LinearAlgebra
@@ -10,22 +15,138 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
     using ..DickeBCE
     using ..DickeHusimiProjections
     Id=Matrix{Float64}(I, 4, 4);
+    """
+    ```julia
     struct PO
-        sistema::ClassicalDickeSystem
-        u
-        T
+    ```
+    This struct represents a periodic orbit in the classical Dicke model. To generate,
+    use 
+    ```julia
+    po = PO(system, u, T)
+    ```
+    where `system` is an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref),
+    `u` is a real vector of an initial condition in the form `[Q,q,P,p]`, and `T`
+    is a real number representing the period. You can retrieve this values using
+    `po.system`, `po.u`, and `po.T`.
+    """
+    struct PO
+        system::ClassicalDickeSystem
+        u::Vector{Float64}
+        T::Real
+        PO(system::ClassicalDickeSystem,
+            u::AbstractVector{<:Real},
+            T::Real)= new(system,Float64.(u),T)
     end
 
     function Base.show(io::IO, m::PO)
          print(io,string("PO @ u=",m.u,", T=", m.T))
     end
-    PO(sistema::ClassicalDickeSystem,u)=PO(sistema,u,get_period(sistema,u))
-    integrate_PO(po::PO;tol=1e-16)=ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=tol);
-    function action(po::PO;tol=1e-16)
-        us=integrate_PO(po,tol=tol).u
+    """
+    ```julia
+    Base.:(==)(po1::PO,po2::PO;Ttol::Real=1e-5,tol::Real=1e-6)
+    ```
+    The comparisson `po1 == po2` returns `true` if `po1` and `po2` represent the same periodic orbit, regardless
+    of which initial condition they have.
+    This is done by evaluating `∈(po1.u,  po2, tol = tol) && abs(po1.T-po2.T) < Ttol`
+    """
+    function Base.:(==)(po1::PO,po2::PO;Ttol::Real=1e-5,tol::Real=1e-6)
+        if abs(po1.T-po2.T)>= Ttol
+            return false
+        end
+        return ∈(po1.u,  po2,tol = tol)
+    end
+    """
+    ```julia
+    Base.in(u::AbstractVector{<:Number}, po::PO;tol::Real=1e-6)
+    Base.∈(u::AbstractVector{<:Number}, po::PO;tol::Real=1e-6)
+    ```
+    
+    You may write `u ∈ po`.
+    
+    Returns `true` if the point `u` is part of the periodic orbit `po`. This
+    is done by integrating `po.u` and seeing if it comes within `tol` of `u`.
+    """
+    function Base.in(u::AbstractArray{<:Number,1}, po::PO;tol::Real=1e-6)
+        if sum(abs2,u-po.u)<tol
+            return true
+        end
+
+        result=false
+
+        function distance(uvar,t,integrator)
+            m=sum(abs2,uvar-u)
+            if m<tol
+                result=true
+                terminate!(integrator)
+            end
+            return m*sign(uvar[4]-u[4])
+        end
+        cb=ContinuousCallback(distance,integrator->distance(integrator.u,integrator.t,integrator),save_positions=(false,false),rootfind=true,interp_points=10,reltol=10^-8,abstol=10^-8)
+        ClassicalSystems.integrate(po.system;t=po.T,u₀=po.u,tol=1e-8,save_everystep=false,callback=cb)
+        return result
+    end
+    """
+    ```julia
+    function PO(system::ClassicalDickeSystem, u::AbstractVector{<:Real})
+    ```
+    Generates a [`PO`](@ref), given a periodic condition `u = [Q,q,P,p]`, where 
+    the period is calculated using [`approximate_period(system,u,bound=1e-2)`](@ref).
+    """
+    PO(system::ClassicalDickeSystem,u::AbstractVector{<:Real})=PO(system,u,approximate_period(system,u,bound=1e-2))
+    
+    """
+    ```julia
+    function integrate_PO(po::PO;tol::Real=1e-16, kargs...)
+    ```
+    Returns an instance of [`OrdinaryDiffEq.ODESolution`](https://diffeq.sciml.ai/dev/basics/solution/), resulting
+    from integrating `po.u` from `t = 0` to `t = po.T`. 
+    # Arguments
+    - `po` should be an instance of [`PO`](@ref)
+    - `tol` is a real number indicating the precision for the integrator. Defaults to `1e-16`
+    - `kargs` are redirected to [`ClassicalSystems.integrate`](@ref)
+    """
+    integrate_PO(po::PO;tol::Real=1e-16, kargs...)=ClassicalSystems.integrate(po.system;t=po.T,u₀=po.u,tol=tol, kargs...);
+    
+    """
+    ```julia
+    function action(po::PO;kargs...)
+    ```
+    Numerically computes the [action](https://en.wikipedia.org/wiki/Action_(physics)#Abbreviated_action_(functional))
+    ```math
+        S = \\int p\\,\\text{d} q + P \\, \\text{d} Q
+    ```
+    along the periodic orbit `po`.
+    # Arguments
+    - `po` should be an instance of [`PO`](@ref)
+    - `kargs` are redirected to [`integrate_PO`](@ref)
+    """
+    function action(po::PO;kargs...)
+        us=integrate_PO(po;kargs...).u
         return sum(us[i][3]*(us[i][1]-us[i-1][1]) + us[i][4]*(us[i][2]-us[i-1][2]) for i in 2:length(us))
     end
-    function average_over_PO(po::Union{OrdinaryDiffEq.ODESolution,PO},f;tol=1e-12)
+    """
+    ```julia
+    function average_over_PO(po::Union{OrdinaryDiffEq.ODESolution,PO},
+        f::Function;
+        kargs...)
+    ```
+    Computes the average of a function ``f`` over the periodic orbit `po`
+    ```math
+        \\frac{1}{T} \\int_0^T f(u(t)) \\, \\text{d} t,
+    ```
+    where ``T=`` `po.T` and ``u=`` `po.u`.
+    # Arguments
+    - `po` should be an instance of [`PO`](@ref) or an instance of [`OrdinaryDiffEq.ODESolution`](https://diffeq.sciml.ai/dev/basics/solution/),
+      in which case the integration is ommited.
+    - `f` should be a function with a method `f([Q,q,P,p])`, which returns values that
+      may be added together and multiplied by scalars (e.g. numbers or arrays).
+    - `kargs` are redirected to  [`ClassicalSystems.integrate`](@ref).
+    """
+    function average_over_PO(po::Union{OrdinaryDiffEq.ODESolution,PO},
+        f::Function;
+        tol::Real=1e-12,
+        kargs...)
+        
         tot=nothing
 
         if isa(po,PO)
@@ -38,7 +159,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                 end
             end
             cb=FunctionCallingCallback(guardar;func_start = false,func_everystep =true)
-            ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=tol,save_everystep=false,callback=cb)
+            ClassicalSystems.integrate(po.system;t=po.T,u₀=po.u,tol=tol,save_everystep=false,callback=cb,kargs...)
         else
             T=po.t[end]-po.t[1]
             for i in 2:length(po.t)
@@ -52,182 +173,154 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         end
         return tot
     end
+    """
+    ```julia
+    function average_over_PO_QP(po::Union{OrdinaryDiffEq.ODESolution,PO},
+        f::Function;
+        kargs...)
+    ```
+    Same as [`average_over_PO`](@ref), but `f` only depends on `Q,P`, that is, the signature
+    of `f` is `f(Q,P)`.
+    """
+    average_over_PO_QP(PO::PO,f::Function;kargs...)=average_over_PO(PO,x->f(x[1],x[3]);kargs...)
+    """
+    ```julia
+    function average_over_PO_qp(po::Union{OrdinaryDiffEq.ODESolution,PO},
+        f::Function;
+        kargs...)
+    ```
+    Same as [`average_over_PO`](@ref), but `f` only depends on `q,p`, that is, the signature
+    of `f` is `f(q,p)`.
+    """
+    average_over_PO_qp(PO::PO,f::Function;kargs...)=average_over_PO(PO,x->f(x[2],x[4]);kargs...)
 
-    average_over_PO_QP(PO::PO,f;tol=1e-12)=average_over_PO(PO,x->f(x[1],x[3]);tol=tol)
-    average_over_PO_qp(PO::PO,f;tol=1e-12)=average_over_PO(PO,x->f(x[2],x[4]);tol=tol)
+    """
+    ```julia
+    function jz_PO_average(po::Union{OrdinaryDiffEq.ODESolution,PO},
+        f::Function;
+        kargs...)
+    ```
+    Returns `average_over_PO_QP(PO,PhaseSpaces.jz;kargs...)`.
+    """
+    jz_PO_average(PO::PO;kargs...)=average_over_PO_QP(PO,PhaseSpaces.jz;kargs...)
+    
+    """
+    ```julia
+    function jy_PO_average(po::Union{OrdinaryDiffEq.ODESolution,PO},
+        f::Function;
+        kargs...)
+    ```
+    Returns `average_over_PO_QP(PO,PhaseSpaces.jy;kargs...)`.
+    """
+    jy_PO_average(PO::PO;kargs...)=average_over_PO_QP(PO,PhaseSpaces.jy;kargs...)
+    
+    """
+    ```julia
+    function jx_PO_average(po::Union{OrdinaryDiffEq.ODESolution,PO},
+        f::Function;
+        kargs...)
+    ```
+    Returns `average_over_PO_QP(PO,PhaseSpaces.jx;kargs...)`.
+    """
+    jx_PO_average(PO::PO;kargs...)=average_over_PO_QP(PO,PhaseSpaces.jx;kargs...)
+    
+    """
+    ```julia
+    function mirror_Qq(po::PO)
+    ```
+    Returns a periodic orbit `po1`, which results from changing the sign
+    of the ``Q`` and ``q`` coordinates of the periodic orbit `po`.
+    """
+    mirror_Qq(po::PO)=PO(po.system,po.u.*[-1,-1,1,1],po.T)
+    
+    """
+    ```julia
+    function mirror_Pp(po::PO)
+    ```
+    Returns a periodic orbit `po1`, which results from changing the sign
+    of the ``P`` and ``p`` coordinates of the periodic orbit `po`.
+    """
+    mirror_Pp(po::PO)=PO(po.system,po.u.*[1,1,-1,-1],po.T)
+    
+    """
+    ```julia
+    function approximate_period(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real};
+        bound::Real = 0.1,
+        tol::Real = 1e-8,
+        max_p_crossings::Real = Inf,
+        verbose::Bool = true)
+    ```
+    Computes the time necessary for the initial condition `u₀` to come back to the
+    same `p`-plane within a neighborhood of radius `bound` of `u₀`. This is useful
+    to approximate the period of an *almost* periodic condition `u₀`. The maximum time 
+    of integration is `10000`.
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model.
+    - `bound` is a positive real number indicating how close does the evolution has 
+      to come back to `u₀`. Defaults to `0.1`.
+    - `tol` is the integration tolerance. Not to be confused with `bound`. Defaults to  1e-8.
+    - `max_p_crossings` is the maximum number of times the condition may cross the `p` plane
+      before aborting. Defaults to `Inf` (no maximum).
+    - `verbose` is a boolean indicating whether to log information messages. Defaults to `true`.
+    """
+    function approximate_period(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real};
+        bound::Real = 0.1,
+        tol::Real = 1e-8,
+        max_p_crossings::Real = Inf,
+        verbose::Bool = true)
 
-    jz_PO_average(PO::PO;tol=1e-12)=average_over_PO_QP(PO,PhaseSpaces.jz;tol=tol)
-    jy_PO_average(PO::PO;tol=1e-12)=average_over_PO_QP(PO,PhaseSpaces.jy;tol=tol)
-    jx_PO_average(PO::PO;tol=1e-12)=average_over_PO_QP(PO,PhaseSpaces.jx;tol=tol)
-    mirror_PO(po::PO)=PO(po.sistema,po.u.*[-1,-1,1,1],po.T)
-
-    function find_orbit(sistema,u₀;bound=0.1,n=10,tol=1e-8,max_order=1,knownorder=0)
-      #  @show Q
-       # @show q
-        counts=n
-        recurrences=0
-        boundexceeded=false
-        count=0
         notreturnedcount=0
         lastsavet=0
         function guardar(integrator)
-            count+=1
             c=integrator.u[:]
 
-            counts-=1
-            returned=bound>norm(c-u₀)
+            returned=bound > norm(c-u₀)
             if !returned
                 notreturnedcount+=1
-            else
-                if knownorder == 0
-                    knownorder=notreturnedcount+1
-                    notreturnedcount=0
-                    recurrences+=1
-                    lastsavet=integrator.t
-                else
-                    if knownorder==notreturnedcount+1
-                        recurrences+=1
-                        lastsavet=integrator.t
-                        notreturnedcount=0
-                    else
-                        terminate!(integrator)
-                        return nothing
+                if notreturnedcount>=max_p_crossings
+                    terminate!(integrator)
+                    if verbose 
+                        @info "Exceeded max_p_crossings = $max_p_crossings"
                     end
+                    return nothing
                 end
-            end
-            if knownorder==0 && notreturnedcount>=max_order
+            else
+                lastsavet = integrator.t
                 terminate!(integrator)
                 return nothing
-            end
-            if knownorder*recurrences>n
-                terminate!(integrator)
-                return nothing
+                    
             end
             u_modified!(integrator,false)
-
             return nothing
-
         end
-       # try
-            cb=ContinuousCallback((uvar,t,integrator)-> (uvar[4]-u₀[4]),nothing,guardar,save_positions=(false,false),rootfind=true,interp_points=3,reltol=10^-8,abstol=10^-8)
-            t=ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=tol).t[end]
-            return knownorder,recurrences,lastsavet/recurrences
+        cb=ContinuousCallback((uvar,t,integrator)-> (uvar[4]-u₀[4]),nothing,guardar,save_positions=(false,false),rootfind=true,interp_points=3,reltol=10^-8,abstol=10^-8)
+        t=ClassicalSystems.integrate(system;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=tol).t[end]
+        return lastsavet
 
-       # catch
-       #     return NaN,NaN
-      #  end
     end
 
-    function get_period(sistema,u₀;tol=1e-8,othervartol=1e-2)
-        t=0
-        count=0
-        function guardar(integrator)
-            if maximum(abs.(integrator.u - u₀))<othervartol
-                t=integrator.t
-
-                terminate!(integrator)
-                return nothing
-            end
-        end
-        try
-        cb=ContinuousCallback((uvar,t,integrator)-> uvar[end]-u₀[end],nothing,guardar,save_positions=(false,false),rootfind=true,interp_points=3,reltol=tol,abstol=tol)
-            u=ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=tol).u[end]
-            return t
-        catch
-            return NaN
-        end
-    end
-
-    function findpeaks(list)
-       inds = []
-       prev=0
-       for i in 2:length(list)
-           if prev>0
-               if list[i]>list[prev]
-                    prev=i
-                elseif  list[i] <list[prev]
-                    length=i-prev
-                    push!(inds,(Int(floor((prev+i)/2)),length))
-                    prev=0
-                end
-            else
-                if list[i]>list[i-1]
-                    prev=i
-                end
-            end
-         end
-        return inds
-    end
-    closestodd(i)=Int(2*ceil((i+1)/2)-1)
-    function search_in_interval(sistema,ϵ,Q=1,s=10000,ds=2;tol=1e-7,n=20,_start=true,refine=false)
-        function f(Q,P,bound)
-            try
-                return find_orbit(sistema,ClassicalDicke.Point(sistema,P=P,Q=Q,p=0.0,ϵ=ϵ),n=n,tol=1e-6,bound=bound,max_order=3)
-            catch
-                return NaN,NaN
-            end
-        end
-        found=[]
-        Qs=range(Q-ds/2,stop=Q+ds/2,length=closestodd(s))
-        pts=f.(Qs,0,0.1)
-        peaks=findpeaks([pt[2] for pt in pts])
-        if _start
-            display(length(peaks))
-            if !refine
-                return [(Qs[i],pts[i][3]) for (i,size) in peaks]
-            end
-        end
-        for (i,size) in peaks
-
-            Qi=Qs[i]
-            w=(ds*(size+1)/length(Qs))
-            if w<tol
-                if 4<pts[i][2]
-                    display((Qi,pts[i][1],pts[i][2]))
-
-                    push!(found,(Qi,pts[i][1],pts[i][2]))
-                end
-            else
-                found=[found;searchInterval(Qi,100,w,tol=tol,_start=false)]
-            end
-        end
-        for pt in found[:]
-            for other in found[:]
-                if other==pt
-                    continue
-                end
-
-                if abs(pt[1]-other[1])<tol
-                    to_remove=pt
-                    if other[3]<pt[3]
-                        to_remove=other
-                    end
-                    try
-                        deleteat!(found,findfirst(x->x==to_remove,found))
-
-                    catch
-                    end
-
-                end
-            end
-        end
-        return found
-    end
-    function next(sistema,u₀,period;tol=1e-12)
-        u₁,M=ClassicalSystems.integrate(sistema,t=period,u₀=u₀,save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
+    function monodromy_method_step_constant_period(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real},
+        T::Real;
+        tol::Real=1e-12)
+        
+        u₁,M=ClassicalSystems.integrate(system,t=T,u₀=u₀,save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
         return u₀-(M-Id)^-1*(u₁-u₀),norm(u₁-u₀)
     end
-    function hamiltonian_gradient(sistema,u)
-        Fu₁=[0.0,0,0,0]
-        ClassicalSystems.step(sistema)(Fu₁,u,[ClassicalDickeSystem.parameters(sistema);1.0],1.0)
+    function hamiltonian_gradient(system::ClassicalDickeSystem,u::AbstractVector{<:Real})
+        Fu₁=Float64[0,0,0,0]
+        ClassicalSystems.step(system)(Fu₁,u,[ClassicalSystems.parameters(system);1.0],1.0)
         gradH=[-Fu₁[3],-Fu₁[4],Fu₁[1],Fu₁[2]]
         return gradH
     end
 
-    function next_constant_energy(sistema,u₀,T;tol=1e-12)
-        u₁,M=ClassicalSystems.integrate(sistema,t=T,u₀=u₀,save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
-        gradH=hamiltonian_gradient(sistema,u₁)
-        ξ=[0.0,0,0,1]
+    function monodromy_method_step_constant_energy(system::ClassicalDickeSystem,u₀::AbstractVector{<:Real},T::Real;tol::Real=1e-12)
+        u₁,M=ClassicalSystems.integrate(system,t=T,u₀=u₀,save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
+        gradH=hamiltonian_gradient(system,u₁)
+        ξ=Float64[0,0,0,1]
         Fu₁=-[-gradH[3],-gradH[4],gradH[1],gradH[2]]
         Mat=[M-Id Fu₁;
             transpose(gradH) 0;
@@ -238,65 +331,135 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
         return u₀+du,T+dT,norm(u₁-u₀)
     end
 
-    function next_constant_P(sistema,u₀,T;tol=1e-12)
-        u₁,M=ClassicalSystems.integrate(sistema,t=T,u₀=u₀,save_everystep=false,get_fundamental_matrix=true).u[end].x
-        ξ=[0.0,0,0,1]
-        gradH=hamiltonian_gradient(sistema,u₁)
-        Fu₁=[-gradH[3],-gradH[4],gradH[1],gradH[2]]
-        Mat=[M-Id Fu₁;
-            transpose(ξ) 0]
-        res=(Mat^-1)*[u₀-u₁;0]
-        du=res[1:4]
-        dT=res[5]
-        return u₀+du,T+dT,norm(u₁-u₀)
-    end
-    function fix_UPO(sistema,u₀,period;maxiters=100,tol=1e-8,inttol=tol/10)
+
+    """
+    ```julia
+    function monodromy_method_constant_period(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real},
+        T::Real;
+        maxiters::Integer=100,
+        tol::Real=1e-8,
+        inttol::Real=tol/10)
+    ```
+    Returns a [`PO`](@ref) with a given period `T` that is found by iteratively perturbating the initial condition `u₀` in
+    the direction that minimizes the distance between ``u_0`` and ``u_0(T)``. The perturbation
+    is obtained from Eq. (31) of Ref. [Simonovi1999](@cite), taking ``\\Lambda`` as the fundamental
+    matrix evaluated at time `T`. Note that the energy of `u₀` will change. To conserve the energy and
+    vary `T`, use [`monodromy_method_constant_energy`](@ref) instead.
+    
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model, which is used 
+      as the starting point to find an orbit.
+    - `T` is a positive real number, indicating the desired period.
+    - `maxiters` is a integer which sets the maximum number of iterations. Defaults
+      to `100`.
+    - `tol` is a tolerance. If  ``\\|u-u(T)\\|<`` `tol`,
+      ``u`` is considered a periodic condition with period `T`. The smaller the tolerance, the
+      more iterations are needed to converge. Default is `1e-8`
+    - `inttol` is the tolerance to be passed to [`ClassicalSystems.integrate`](@ref). Default is
+      `tol/10`.
+    """
+    function monodromy_method_constant_period(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real},
+        T::Real;
+        maxiters::Integer=100,
+        tol::Real=1e-8,
+        inttol::Real=tol/10)
     u₁=u₀
     for j in 1:maxiters
-        u₁,Δ=next(sistema,u₁,period,tol=inttol)
+        u₁,Δ=monodromy_method_step_constant_period(system,u₁,T,tol=inttol)
         if Δ<tol
             break
         end
-
+        if  j==maxiters
+            @error("Maximum iterations reached")
+        end
     end
-    u₁
-    end
 
-    function fix_UPO_keep_energy(sistema,u₀,period;maxiters=100,tol=1e-8,inttol=tol/10)
+    PO(system,u₁,T)
+    end
+    """
+    ```julia
+    function monodromy_method_constant_energy(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real},
+        T::Real;
+        maxiters::Integer=100,
+        tol::Real=1e-8,
+        inttol::Real=tol/10,
+        correct_energy::Bool=true)
+    ```
+    Returns a [`PO`](@ref) with energy approximatelly (see below) the same energy as ``u₀`` obtained 
+    by iteratively perturbating period `T` and the initial condition `u₀`  in
+    the direction that minimizes the distance between ``u_0`` and ``u_0(T)`` and is perpendicular to the
+    Hamiltonian gradient. The algorithm is described in App. A, section A.1. of Ref. [Pilatowsky2021](@cite).
+    
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model, which is used 
+      as the starting point to find an orbit.
+    - `T` is a positive real number, which is used as the starting point to find an orbit.
+    - `maxiters` is a integer which sets the maximum number of iterations. Defaults
+      to `100`.
+    - `tol` is a tolerance. If  ``\\|u-u(T)\\|<`` `tol`,
+      ``u`` is considered a periodic condition with period `T`. The smaller the tolerance, the
+      more iterations are needed to converge. Default is `1e-8`
+    - `inttol` is the tolerance to be passed to [`ClassicalSystems.integrate`](@ref). Default is
+      `tol/10`.
+    - `correct_energy` is a Boolean. As described in  Ref. [Pilatowsky2021](@cite), this algorithm
+      only approximately conserves energy. If `correct_energy == true`, the initial condition 
+      is projected back to the energy shell between each iteration. This allows energy to be truly
+      conserved, however, it makes the algorithm more unstable. The default is `true`. 
+    """
+    function monodromy_method_constant_energy(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real},
+        T::Real;
+        maxiters::Integer=100,
+        tol::Real=1e-8,
+        inttol::Real=tol/10, 
+        correct_energy::Bool=true)
     u₁=u₀
-    T=period
-
+    T₁=T
+    ϵ = ClassicalDicke.hamiltonian(system)(u₀)
     for j in 1:maxiters
-        u₁,T,Δ=next_constant_energy(sistema,u₁,T;tol=inttol)
-        if T<0
-            error("Error de convergencia")
+        if correct_energy
+            signo = ClassicalDicke.q_sign(system,u₁)
+            u₁=Point(system,Q=u₁[1],P=u₁[3],p=u₁[4],signo=signo,ϵ=ϵ)
+        end
+        u₁,T₁,Δ=monodromy_method_step_constant_energy(system,u₁,T₁;tol=inttol)
+        if T₁<0
+            error("Convergence error")
         end
         if Δ<tol
             break
         end
-        if(j==maxiters)
-            @show "MAXITERS"
+        if j==maxiters
+            error("Maximum iterations")
         end
-
-    end
-    u₁,T
     end
 
-    function fix_UPO_keep_P(sistema,u₀,period;maxiters=100,tol=1e-8,inttol=tol/10)
-    u₁=u₀
-    T=period
-    for j in 1:maxiters
-        u₁,T,Δ=next_constant_P(sistema,u₁,T,tol=1e-8)
-        if Δ<tol
-            break
-        end
-
+    PO(system,u₁,T₁)
     end
-    u₁,T
-    end
-
-    function find_p_0(sistema,u₀;tol=1e-6,negative=false)
-        nu=[0,0,0,0]
+    
+    """
+    ```julia
+    function find_p_zero(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real};
+        tol::Real=1e-6,
+        negative::Bool=false)
+    ```
+    Evolves `u₀` until it crosses the ``p=0`` plane from negative to positive and returns the result.
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model.
+    - `tol` is the numerical tolerance.
+    - If `negative` is `true`, then the crossing is from positive to negative. Default is `false`.
+    """
+    function find_p_zero(system::ClassicalDickeSystem,
+        u₀::AbstractVector{<:Real};
+        tol::Real=1e-6,
+        negative::Bool=false)
+        nu=Float64[0,0,0,0]
 
         function guardar(integrator)
 
@@ -312,7 +475,7 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                 negguardar,guardar=guardar,negguardar
             end
             cb=ContinuousCallback((uvar,t,integrator)-> (uvar[4]-0),guardar,negguardar,save_positions=(false,false),rootfind=true,interp_points=3,abstol=tol)
-            ClassicalSystems.integrate(sistema;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=1e-6)
+            ClassicalSystems.integrate(system;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=tol)
             return nu
         catch
             if abs(u₀[4])< tol  #hay un error cuando el punto ya satisface la condicion por juliaDiff
@@ -321,50 +484,177 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
             return NaN
         end
     end
-
-    function follow_UPO_family(sistema,u₀,period,finalperiod;step=0.1,savestep=:nothing,tol=1e-8)
-        us=[]
-        if savestep==:nothing
-            savestep=step
-        end
-        if  savestep%step!=0
-            error("savestep debe ser un multiplo de step")
-        end
-        periods=period:(period<finalperiod ? 1 : -1)*step:finalperiod
-        saveperiods=period:(period<finalperiod ? 1 : -1)*savestep:finalperiod
-        newu=u₀
-        prog=Progress(length(periods), 1)
-        for p in periods
-            next!(prog)
-            newu=fix_UPO(sistema,newu,p,tol=tol,inttol=min(1e-12,tol/100))
-            newu=find_p_0(sistema,newu,tol=tol)
-            if p in saveperiods
-                push!(us,newu)
-            end
-            realp=get_period(sistema,newu,tol=tol)
-            @show newu
-            @show p,realp
-        end
-        finish!(prog)
-        return [PO(sistema,us[i],saveperiods[i]) for i in 1:length(saveperiods)]
-    end
-     function lyapunov_exponent(PO)
-         sistema=PO.sistema
-         T=PO.T
+    """
+    ```julia
+    function lyapunov(po::PO)
+    ```
+    Returns the Lyapunov exponent of the periodic orbit `po`, as given by Eq. (B3) of
+    Ref. [Pilatowsky2021](@cite).
+    """
+     function lyapunov(po::PO)
+         system=po.system
+         T=po.T
          maximum(log.(abs.(
-            LinearAlgebra.eigvals(ClassicalSystems.integrate(sistema,u₀=PO.u,t=T,
+            LinearAlgebra.eigvals(ClassicalSystems.integrate(system,u₀=po.u,t=T,
                     get_fundamental_matrix=true,save_everystep=false)[end].x[2])
             ))/T)
     end
-    function _max0(x)
-        if x>0
-            return x
-        else
-            return Inf
-        end
-    end
+    """
+    ```julia
+    energy(po::PO) = ClassicalDicke.hamiltonian(po.system)(po.u)
+    ```
+    Returns the energy of the periodic orbit `po`.
+    
+    """
+    energy(po::PO) =ClassicalDicke.hamiltonian(po.system)(po.u)
+    """
+    ```julia
+    function follow_PO_family_from_period(po::PO;
+        step::Real=0.1,
+        tol::Real=1e-5,
+        initalperturbation::AbstractVector{<:Real}=Float64[0,1,0,0],
+        verbose::Bool =true)
+    ```
+    Returns a function `T -> po1` that returns a PO from the same family as `po`
+    but with period `T`. This algorithm applies the function  [`monodromy_method_constant_period`](@ref)
+    repeatedly, increasing or decreasing the period in small perturbations to reach the target.
+    
+    # Arguments
+    - `po` should be an instance of [`PO`](@ref)
+    - `step` is the initial size of the perturbations in period, this is decreased and increased
+      dynamically (default is `0.1`).
+    - `tol` is the tolerance to pass to [`monodromy_method_constant_period`](@ref) (default is `1e-5`).
+    - `verbose` is a Boolean indicating whether to print the progress. Default is `true`.
+    
+    The function returned accepts the following keyword arguments:
+    - `tol` overrides `tol` above.
+    - `minstep` is the minimum step (which is varied dynamically). Default is `step/1000`.
+    - `maxstep` is the maximum step. Default is `step`.
+    - `step` overrides `step` above. Default is `maxstep`.
+    - `maxiters` is the maximum number of iterations. Default is `1000`.
+    """
+    function follow_PO_family_from_period(po::PO;
+        step::Real=0.1,
+        tol::Real=1e-5,
+        initalperturbation::AbstractVector{<:Real}=Float64[0,1,0,0],
+        verbose::Bool =true)
+        
+        system=po.system
+        u₀=po.u 
+        period = po.T
+        us=[u₀]
+    
 
-    function follow_UPO_family_energies(sistema,u₀,period,H;step=0.1,tol=1e-5,energytol=1e-3,initalperturbation=[0,1,0,0],dontallowlessenergy=false)
+        periods=Float64[period]
+    
+    
+        function get(finalperiod::Real;tol::Real=tol, minstep::Real=step/1000,maxstep::Real=step,
+            step::Real=maxstep,maxiters::Integer=1000)
+            index =NaN
+            if verbose
+                prog=ProgressUnknown("Remaining T")
+            end
+            _it=0
+            while true
+                _it+=1
+                if _it>maxiters
+                    error("Maximum iterations")
+                end
+
+                index=findmin(abs.(finalperiod.-periods))[2]
+                last_p=periods[index]
+                falta=abs(last_p-finalperiod)
+
+                if falta==0
+                    break
+                end
+                step=min(step,falta)
+                direction=sign(finalperiod-last_p)
+                newu=us[index]
+                if verbose
+                    prog.desc="Current period = $(round(last_p,digits=3)), step = 10^$(round(log10(step),digits=1)), iterations ="
+                    next!(prog)
+
+                end
+               try
+                    ΔT=direction*step
+                    o= monodromy_method_constant_period(system,newu,last_p+ΔT,inttol=min(1e-12,tol/100),tol=tol)
+                    
+                    newu = o.u
+                    period = o.T
+                catch e
+                    if step/1.2<minstep# (!converror && H(newu) in energies) ||
+
+                            error("The algorithm is not converging. Got to ",PO(system,us[index],periods[index]))
+                        
+                    end
+                    step/=1.2
+                    continue
+                end
+
+                step=min(maxstep,step*1.1)
+    
+                nindex=searchsortedlast(periods,period) 
+                insert!(us,nindex + 1,newu)
+                insert!(periods,nindex + 1,period)
+                index=nindex+1
+    
+            end
+            if verbose
+                finish!(prog)
+            end
+            return PO(system,us[index],periods[index])
+        end
+        return get
+    end
+    
+
+    """
+    ```julia
+    function follow_PO_family_from_energy(po::PO;
+        step::Real=0.1,
+        tol::Real=1e-5,
+        energytol::Real=1e-3,
+        initalperturbation::AbstractVector{<:Real}=Float64[0,1,0,0],
+        verbose::Bool =true,
+        dontallowlessenergy::Bool=false)
+    ```
+    Returns a function `ϵ -> po1` that returns a PO from the same family as `po`
+    but with energy `ϵ`. This algorithm is detailed in App. A.2. of Ref. [Pilatowsky2021](@cite)
+    
+    # Arguments
+    - `po` should be an instance of [`PO`](@ref).
+    - `step` is the initial size of the perturbations in energy, this is decreased and increased
+      dynamically (default is `0.1`). If the orbits seem to suddenly jump, try to decrease this number.
+    - `tol` is the tolerance to pass to [`monodromy_method_constant_energy`](@ref) (default is `1e-5`).
+    - `energytol` is the precision in energy below which a PO is returned   (default is `1e-3`).
+    - `initalperturbation` is de direction of the first perturbation in the form `[Q,q,P,p]` (default is `[0,1,0,0]`).
+    - `verbose` is a Boolean indicating whether to print the progress. Default is `true`.
+    - `dontallowlessenergy` forbids evaluation below the energy of `po`. Default is `false`.
+    
+    The function returned accepts the following keyword arguments:
+    - `tol` overrides  `tol` above.
+    - `energytol` overrides  `energytol` above.
+    - `maxstep` is the maximum step. Default is `step`.
+    - `step` overrides `step` above. Default is `maxstep`.
+    - `minstep` is the minimum step (which is varied dynamically). Default is `min(step,energytol/10)`.
+    - `correct_energy` is passed to [`monodromy_method_constant_energy`](@ref). Default is `true`.
+    - `maxiters` is the maximum number of iterations. Default is `1000`.
+    - `energywiggletolerance` is the tolerance for oscillations. Oscillating behaviour indicates
+      instability, but sometimes it happens and there must be some tolerance. The default is `1e-2`.
+    """
+    function follow_PO_family_from_energy(po::PO;
+        step::Real=0.1,
+        tol::Real=1e-5,
+        energytol::Real=1e-3,
+        initalperturbation::AbstractVector{<:Real}=Float64[0,1,0,0],
+        verbose::Bool =true,
+        correct_energy = true,
+        dontallowlessenergy::Bool=false)
+        system=po.system
+        u₀=po.u 
+        period = po.T
+        H = ClassicalDicke.hamiltonian(system)
         us=[u₀]
 
 
@@ -383,19 +673,25 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
 
 
 
-        function get(finalEnergy;tol=tol,energytol=energytol,minstep=energytol/10,maxstep=0.1,p0positiveside=false,step=maxstep,_prog=ProgressThresh(0.0,"Remaining Energy"),maxiters=1000,_it=0,energywiggletolerance=1e-2)
+        function get(finalEnergy::Real;tol::Real=tol,
+            energytol::Real=energytol,
+            maxstep=step::Real,step::Real=step, minstep::Real=min(step,energytol/10),
+            maxiters::Integer=1000,energywiggletolerance::Real=1e-2)
             index =NaN
-            prog=_prog
+            _it=0
+            if verbose
+                prog=ProgressUnknown("Current Energy")
+            end
             if dontallowlessenergy
                 finalEnergy=max(finalEnergy,E₀)
             end
             while true #abs(energies[index]-finalEnergy)>energytol
                 _it+=1
                 if _it>maxiters
-                    error("Max iters")
+                    error("Maximum iterations")
                 end
                 #index=findmin(abs.(energies.-finalEnergy))[2]
-                index=findmin(_max0.(finalEnergy.-energies))[2]
+                index=max(searchsortedlast(energies,finalEnergy),1)
                 last_e=energies[index]
                 falta=abs(last_e-finalEnergy)
                 if falta<energytol
@@ -405,46 +701,30 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                 direction=sign(finalEnergy-last_e)
 
                 newu=us[index]
-                prog.desc="Remaining Energy (step=10^$(round(log10(step),digits=1))"
-
+                if verbose
+                    prog.desc="Current energy = $(round(last_e,digits=3)), step = 10^$(round(log10(step),digits=1)), iterations ="
+                    next!(prog)
+                end
                 converror=false
-                try
-                    ClassicalSystems.step(sistema).jac(cacheJ,newu,[ClassicalSystems.parameters(sistema);1.0],1.0)
-                    grad=hamiltonian_gradient(sistema,newu)
+               try
+                    ClassicalSystems.step(system).jac(cacheJ,newu,[ClassicalSystems.parameters(system);1.0],1.0)
+                    grad=hamiltonian_gradient(system,newu)
                     hessian=Λ*cacheJ
                     if index==1
                         Δu=initalperturbation
                     else
-                    #   Δu=us[index]-us[index-1]
-                    #   newu=find_p_0(sistema,us[index]-,tol=tol,negative=!p0positiveside)
-                      #  u1=find_p_0(sistema,us[index-1],tol=tol,negative=!p0positiveside)
-                     #   periodMultiple=0.333
-#
-                      #  newu=ClassicalSystems.integrate(sistema,u₀=newu,t= periods[index]*0.1,tol=tol,save_everystep=false).u[end]
-                     #   u1=ClassicalSystems.integrate(sistema,u₀=u1,t=periods[index-1]*periodMultiple,tol=tol,save_everystep=false).u[end]
-                       # Δu= newu - u1
-                       Δu=hamiltonian_gradient(sistema,newu)
+                
+                       Δu=hamiltonian_gradient(system,newu)
                     end
-                #    eigenvals,eigenvects=LinearAlgebra.eigen(log(ClassicalSystems.integrate(sistema,u₀=newu,t=periods[index],
-                #    get_fundamental_matrix=true,save_everystep=false,tol=tol)[end].x[2]))
-                 #   nullvects=nullspace(transpose(real.(eigenvects)), atol=0.01)
-                 #   allnullvects=[nullvects[:,i]/norm(nullvects[:,i]) for i in 1:size(nullvects)[2]]
-                   # minp=minimum(abs(v[4]) for v in allnullvects)
-                  #  Δu=-allnullvects[findfirst(x->abs(x[4])== minp,allnullvects)]
-
-
+        
                     Δu=Δu/norm(Δu)
-                  #  @show Δu,allnullvects
                     ΔE=direction*step
 
 
                     a=0.5*transpose(Δu)*hessian*Δu
                     b=dot(grad,Δu)
                     c=- ΔE
-
-
-                    #hacemos Taylor
-                    #-c=Δϵ=b*s + a s^2
+                    #Taylor series: -c=Δϵ=b*s + a s^2
                     s=(-b+sqrt(b^2-4*a*c))/(2*a)
                     if abs(H(newu + s*Δu) - (last_e + ΔE)) >abs(H(newu - s*Δu) - (last_e + ΔE))
                         s=-s
@@ -456,8 +736,9 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                         periodGuess+= (E-energies[index-1])*(periods[index]-periods[index-1])/(energies[index]-energies[index-1])
                     end
 
-                    newu,period= fix_UPO_keep_energy(sistema,newu+s*Δu,periodGuess,inttol=min(1e-12,tol/100),tol=tol)
-
+                    o= monodromy_method_constant_energy(system,newu+s*Δu,periodGuess,inttol=min(1e-12,tol/100),tol=tol,correct_energy=correct_energy)
+                    newu = o.u
+                    period = o.T
                     if(E-H(newu))>energywiggletolerance
                         if index>1
                             deleteat!(energies,index)
@@ -467,155 +748,179 @@ export search_in_interval,find_orbit,get_period,follow_UPO_family,find_p_0,fix_U
                         converror=true
                         index-=1
                     end
-                  #  if sign(finalEnergy-H(newu))!=direction
-                  #      if step/2<minstep
-                  #          converror=true
-                  #       else
-                  #          step=step/4
-                  #      end
-                  #  end
+
                 catch e
-                    #error("ij")
                     converror=true
                 end
 
-                notbetter=abs(finalEnergy-H(newu))> falta # && sign(finalEnergy-H(newu))==direction
-               #@show notbetter,H(newu),energies[index]
+                notbetter=abs(finalEnergy-H(newu))> falta 
                 if  converror || H(newu) in energies || notbetter
-                #    if notbetter
-              #          @show index, us[index]
-             ##           us[index]=ClassicalSystems.integrate(sistema,u₀=newu,t= periods[index]*0.1,tol=tol,save_everystep=false).u[end]
-              #          @show , us[index]
-              #      end
+        
                     if step/1.2<minstep# (!converror && H(newu) in energies) ||
 
-                        if p0positiveside==true
-                            p0positiveside=false
-                            step=maxstep*1.1
-
-                        else
-                            cancel(prog)
-                            error("El algoritmo no está convergiendo. Llegó hasta ",PO(sistema,us[index],periods[index]), " y energía ",H(us[index]) )
-                        end
+                    
+                        error("The algorithm is not converging. Got to ",PO(system,us[index],periods[index]), " with energy ",H(us[index]) )
+                        
                     end
                     step/=1.2
                     continue
-                    #return get(finalEnergy;step=step/1.1,tol=tol,energytol=energytol,p0positiveside=p0positiveside,minstep=minstep,maxstep=maxstep,_prog=prog,maxiters=maxiters,_it=_it)
 
 
                 end
-                update!(prog,abs(last_e-finalEnergy))
-
                 step=min(maxstep,step*1.1)
 
-                nindex=findmin(_max0.(H(newu).-energies))[2]
+                nindex=searchsortedlast(energies,finalEnergy) 
                 insert!(us,nindex+1,newu)
                 insert!(energies,nindex+1,H(newu))
                 insert!(periods,nindex+1,period)
                 index=nindex+1
 
             end
-            finish!(prog)
-            return PO(sistema,us[index],periods[index])#,energies[index]
+            if verbose
+                finish!(prog)
+            end
+            return PO(system,us[index],periods[index])
         end
         return get
     end
-    family_A(sistemaC::ClassicalDickeSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,+),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
- family_B(sistemaC::ClassicalDickeSystem)=follow_UPO_family_energies(sistemaC,ClassicalDicke.minimum_energy_point(sistemaC,+),2*pi/ClassicalDicke.normal_frequency(sistemaC,-),ClassicalDicke.hamiltonian(sistemaC),tol=1e-8,energytol=1e-3)
-    #function plot_PO_QP(sis::ClassicalDickeSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
-#        for po in F
-#
-#            u=integrate_PO(po)
-#            us=u.u
-#            ts=u.t
-#            plot!(p,[(i[1],i[3]) for i in us];xlabel="Q",ylabel="P",fontfamily="Times",opts...)
-#        end
-#        if H!=:nothing
-#            contour!(range(-2,stop=2,length=100),range(-2,stop=2,length=100),(Q,P)->ClassicalDicke.minimum_ϵ_for(sis;Q=Q,P=P,p=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
-#        end
-#        return p
-#    end
-    # function plot_PO_QPp(sis::ClassicalDickeSystem,F::Array{PO,1};p=plot(),H=:nothing,opts...)
-    #     for po in F
-    #
-    #         u=integrate_PO(po)
-    #         us=u.u
-    #         ts=u.t
-    #         plot!(p,[i[1] for i in us],[i[3] for i in us],[i[4] for i in us];xlabel="Q",ylabel="P",zlabel="p",fontfamily="Times",opts...)
-    #     end
-    #     return p
-    # end
-    # function plot_PO_qp(sis::ClassicalDickeSystem,F::Array{PO,1};H=:nothing,p=plot(),opts...)
-    #     for po in F
-    #
-    #         u=integrate_PO(po)
-    #         us=u.u
-    #         ts=u.t
-    #         plot!(p,[(i[2],i[4]) for i in us];xlabel="q",ylabel="p",fontfamily="Times",opts...)
-    #     end
-    #     if H!=:nothing
-    #
-    #         contour!(range(-4,stop=4,length=100),range(-2,stop=2,length=100),(q,p)->ClassicalDicke.minimum_ϵ_for(sis;q=q,p=p,P=0),levels=[maximum(H(f.u) for f in F)],linewidth=1,linecolor=:black)
-    #     end
-    #     return p
-    # end
-    # function plot_PO_Qq(sis::ClassicalDickeSystem,F::Array{PO,1},H;p=plot(),opts...)
-    #     for po in F
-    #
-    #         u=integrate_PO(po)
-    #         us=u.u
-    #         ts=u.t
-    #         plot!(p,[(i[1],i[2]) for i in us];xlabel="Q",ylabel="q",fontfamily="Times",opts...)
-    #     end
-    #     return p
-    # end
-    function overlap_of_tube_with_homogenous_state(sistemaQ::DickeBCE.QuantumDickeSystem,po::PO;time_integral_tolerance=1e-7,phase_space_integral_resolution=0.1)
-        orbit=integrate_PO(po,tol=time_integral_tolerance)
-        ∫dtHtx(x)=average_over_PO(orbit,u-> DickeBCE.HusimiOfCoherent(sistemaQ,u,x))
-        res=phase_space_integral_resolution
-        ϵ=ClassicalDicke.hamiltonian(po.sistema)(po.u)
-        insidepoints=0
-        function f(Q,P)
-            v=DickeHusimiProjections.∫∫dqdpδϵ(po.sistema,ϵ=ϵ,Q=Q,P=P,f=∫dtHtx,nonvalue=NaN,p_res=res)
-            if isnan(v)
-                return 0.0
-            end
-            insidepoints+=1
-            return v
-        end
-        sm=sum( f(Q,P) for Q in -2:res:2, P in -2:res:2)
-        return sm/(insidepoints*2*pi)
+    """
+    ```julia
+    function family_A(system::ClassicalDickeSystem;kargs...)
+    ```
+    Returns a function `ϵ -> po` that returns a PO from family ``\\mathcal{A}`` of Ref. [Pilatowsky2021](@cite). This is done
+    by passing the ground state fixed point with the positive normal frequency as period to [`follow_PO_family_from_energy`](@ref).
+    
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref ClassicalDicke.ClassicalDickeSystem). 
+      The system must be in the supperradiant regime. 
+    - `kargs...` are redirected to [`follow_PO_family_from_energy`](@ref)
+    """
+    family_A(system::ClassicalDickeSystem;kargs...)=follow_PO_family_from_energy(PO(system,
+        ClassicalDicke.minimum_energy_point(system,+),2*pi/ClassicalDicke.normal_frequency(system,+));
+        tol=1e-8,
+        correct_energy =false, #for some reason, the algorithm with correct_energy=true crashes at energy -1.4 for family_A...
+        energytol=1e-3,
+        kargs...)
+    """
+    ```julia
+    function family_B(system::ClassicalDickeSystem;kargs...)
+    ```
+    Returns a function `ϵ -> po` that returns a PO from family ``\\mathcal{B}`` of Ref. [Pilatowsky2021](@cite). This is done
+    by passing the ground state fixed point with the negative normal frequency as period to [`follow_PO_family_from_energy`](@ref).
+    
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref ClassicalDicke.ClassicalDickeSystem). 
+      The system must be in the supperradiant regime. 
+    - `kargs...` are redirected to [`follow_PO_family_from_energy`](@ref)
+    """
+    family_B(system::ClassicalDickeSystem;kargs...)=follow_PO_family_from_energy(PO(system,ClassicalDicke.minimum_energy_point(system,+),2*pi/ClassicalDicke.normal_frequency(system,-));
+        tol=1e-8,energytol=1e-3,kargs...)
+
+    """
+    ```julia
+    function po_coordinates(coords::AbstractArray{<:Integer}, 
+        po::PO;tol::Real=1e-12)
+    ```
+    Returns an array `[Tuple(x1[coords]), Tuple(x2[coords]), ...]`, where is an array containing up
+    to 4 integers from 1 to 4, and `xi` are the points in `po` obtained with numerical 
+    integration with tolerance `tol`.
+    """
+    function po_coordinates(coords::AbstractArray{<:Integer}, 
+        po::PO;tol::Real=1e-12)
+        u=integrate_PO(po)
+        us=u.u
+        return [Tuple(u[i] for i in coords) for u in us];
     end
-    function scarring_measure(sistemaQ::DickeBCE.QuantumDickeSystem,quantum_state::AbstractArray{<:Number,1},po::PO;Htol=1e-3,kargs...)
-        POandState=average_over_PO(po,x->DickeBCE.Husimi(sistemaQ,x,quantum_state;tol=Htol))
-        POandHomState=overlap_of_tube_with_homogenous_state(sistemaQ,po;phase_space_integral_resolution=0.1,kargs...)
+    """
+    ```julia
+    QP(po::PO; tol::Real=1e-12) = po_coordinates([1,3], po, tol=tol)
+    ```
+    Returns an array `[(Q1, P1), (Q2, P2), ...]` with the coordinates of `po`, integrated with tolerance `tol`.
+    This can be directly passed to [`Plots.plot`](https://docs.juliaplots.org/latest/tutorial/)
+    """
+    QP(po::PO;tol::Real=1e-12)=po_coordinates([1,3],po,tol=tol)
+    """
+    ```julia
+    qp(po::PO; tol::Real=1e-12) = po_coordinates([2,4], po, tol=tol)
+    ```
+    Returns an array `[(q1, p1), (q2, p2), ...]` with the coordinates of `po`, integrated with tolerance `tol`.
+    This can be directly passed to [`Plots.plot`](https://docs.juliaplots.org/latest/tutorial/)
+    """
+    qp(po::PO;tol::Real=1e-12) = po_coordinates([2,4],po,tol=tol)
+    """
+    ```julia
+    QPp(po::PO; tol::Real=1e-12) = po_coordinates([1,3,4], po, tol=tol)
+    ```
+    Returns an array `[(Q1, P1, p1), (Q2, P2, p2), ...]` with the coordinates of `po`, integrated with tolerance `tol`.
+    This can be directly passed to [`Plots.plot`](https://docs.juliaplots.org/latest/tutorial/) to generate a 3D plot.
+    """
+    QPp(po::PO; tol::Real=1e-12)=po_coordinates([1,3,4],po,tol=tol)
+    """
+    ```julia
+    QPq(po::PO; tol::Real=1e-12) = po_coordinates([1,3,2], po, tol=tol)
+    ```
+    Returns an array `[(Q1, P1, q1), (Q2, P2, q2), ...]` with the coordinates of `po`, integrated with tolerance `tol`.
+    This can be directly passed to [`Plots.plot`](https://docs.juliaplots.org/latest/tutorial/) to generate a 3D plot.
+    """
+    QPq(po::PO; tol::Real=1e-12)=po_coordinates([1,3,2], po, tol=tol)
+
+    """
+    ```julia
+    function overlap_of_tube_with_homogenous_state(system::DickeBCE.QuantumDickeSystem,
+        po::PO;
+        time_integral_tolerance::Real=1e-7,
+        phase_space_integral_resolution::Real=0.1)
+    ```
+    Returns the overlap ``\\text{tr}(\\hat{\\rho}_\\epsilon \\hat{\\rho}_{\\mathcal{O}} )``
+    of a tubular state ``\\hat{\\rho}_{\\mathcal{O}}`` around the periodic orbit ``\\mathcal{O}=`` `po`, (Eq. (15) of Ref. [Pilatowsky2021](@cite)) 
+    with a totally delocalized state ``\\hat{\\rho}_\\epsilon`` (Eq. (16) of Ref. [Pilatowsky2021](@cite)).
+    # Arguments
+    - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref). 
+    - `po` should be an instance of [`PO`](@ref). 
+    - `time_integral_tolerance` is the numerical tolerance for the integral in Eq. (15) of Ref. [Pilatowsky2021](@cite). Default is `1e-7`.
+    - `phase_space_integral_resolution` is the phase space resolution for the integral in Eq. (16) of Ref. [Pilatowsky2021](@cite), that is, `res` in
+      [`DickeHusimiProjections.energy_shell_average`](@ref). Default is `0.1`.
+    """
+    function overlap_of_tube_with_homogenous_state(system::DickeBCE.QuantumDickeSystem,
+        po::PO;
+        time_integral_tolerance::Real=1e-7,
+        phase_space_integral_resolution::Real=0.1)
+        
+        orbit=integrate_PO(po,tol=time_integral_tolerance)
+        ∫dtHtx(x)=average_over_PO(orbit,u-> DickeBCE.husimi_of_coherent(system,u,x))
+        res=phase_space_integral_resolution
+        ϵ=energy(po)
+        symmP = (po == mirror_Pp(po))
+        symmQP = (po == mirror_Qq(po)) && symmP
+        return DickeHusimiProjections.energy_shell_average(po.system,
+                ϵ=ϵ,
+                f=∫dtHtx,
+                res=res,
+                symmetricP =symmP, 
+                symmetricQP=symmQP)
+    end
+    """
+    ```julia
+    function scarring_measure(system::DickeBCE.QuantumDickeSystem,
+        quantum_state::AbstractVector{<:Number},
+        po::PO;Htol::Real=1e-3,kargs...)
+    ```
+    Returns the scarring measure ``\\mathcal{P}(\\mathcal{O},\\hat{\\rho})`` as defined in Eq. (17) of Ref. [Pilatowsky2021](@cite).
+    # Arguments
+    - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref). 
+    - `quantum_state` should be a vector representing the quantum state  ``\\hat{\\rho}`` in the coherent efficient basis. 
+    - `po` should be an instance of [`PO`](@ref) representing ``\\mathcal{O}`` above.
+    - `Htol` is the tolerance to be passed to [`DickeBCE.husimi`](@ref)
+    - `kargs` are redirected to [`overlap_of_tube_with_homogenous_state`](@ref), which gives the denominator in Eq. (17) of Ref. [Pilatowsky2021](@cite).
+    """
+    function scarring_measure(system::DickeBCE.QuantumDickeSystem,
+        quantum_state::AbstractVector{<:Number},
+        po::PO;Htol::Real=1e-3,kargs...)
+        
+        POandState=average_over_PO(po,x->DickeBCE.husimi(system,x,quantum_state;tol=Htol))
+        POandHomState=overlap_of_tube_with_homogenous_state(system,po,kargs...)
         return POandState/POandHomState
     end
-    function Base.in(u::AbstractArray{<:Number,1}, po::PO;tol=1e-6)
-        if sum(abs2,u-po.u)<tol
-            return true
-        end
-
-        result=false
-
-        function distance(uvar,t,integrator)
-            m=sum(abs2,uvar-u)
-            if m<tol
-                result=true
-                terminate!(integrator)
-            end
-            return m*sign(uvar[4]-u[4])
-        end
-        cb=ContinuousCallback(distance,integrator->distance(integrator.u,integrator.t,integrator),save_positions=(false,false),rootfind=true,interp_points=10,reltol=10^-8,abstol=10^-8)
-        ClassicalSystems.integrate(po.sistema;t=po.T,u₀=po.u,tol=1e-8,save_everystep=false,callback=cb)
-        return result
-    end
-    function Base.:(==)(po1::PO,po2::PO;Ttol=1e-5,tol=1e-6)
-        if abs(po1.T-po2.T)>tol
-            return false
-        end
-        return ∈(po1.u,  po2,tol = tol)
-    end
+    
 end
-
-
+                                                                                                                                                                                                                                                                                                                                                                                                                     

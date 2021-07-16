@@ -16,7 +16,7 @@ export Q_of_θφ,Q_of_θϕ,P_of_θφ,P_of_θϕ,θ_of_QP,φ_of_QP,ϕ_of_QP,jz,jx,
     Q_of_θϕ(θ::Real,ϕ::Real)=sqrt(2*(1-cos(θ)))*cos(ϕ)
     
     """
-    See [`Q_of_θϕ`](@ref)
+    See [`Q_of_θϕ`](@ref).
     """
     Q_of_θφ(θ::Real,φ::Real)=Q_of_θϕ(θ,φ)
 
@@ -34,7 +34,7 @@ export Q_of_θφ,Q_of_θϕ,P_of_θφ,P_of_θϕ,θ_of_QP,φ_of_QP,ϕ_of_QP,jz,jx,
     P_of_θϕ(θ::Real,ϕ::Real)=-sqrt(2*(1-cos(θ)))*sin(ϕ)
     
     """
-    See [`P_of_θϕ`](@ref)
+    See [`P_of_θϕ`](@ref).
     """
     P_of_θφ(θ::Real,φ::Real)=P_of_θϕ(θ,φ)
     """
@@ -54,7 +54,7 @@ export Q_of_θφ,Q_of_θϕ,P_of_θφ,P_of_θϕ,θ_of_QP,φ_of_QP,ϕ_of_QP,jz,jx,
     
     Returns
     ```math
-        \\phi =- \\text{arctan2}(-P,Q)\\in [0,2 \\pi ],
+        \\phi = \\text{arctan2}(-P,Q)\\in [0,2 \\pi ],
     ```
     where ``\\text{arctan2}`` is the [2-argument arctangent](https://en.wikipedia.org/wiki/Atan2).
     
@@ -63,7 +63,7 @@ export Q_of_θφ,Q_of_θϕ,P_of_θφ,P_of_θϕ,θ_of_QP,φ_of_QP,ϕ_of_QP,jz,jx,
     ϕ_of_QP(Q::Real,P::Real)=mod(atan(-P,Q),2*pi)
     
     """
-    See [`ϕ_of_QP`](@ref)
+    See [`ϕ_of_QP`](@ref).
     """
     φ_of_QP(Q::Real,P::Real)=ϕ_of_QP(Q,P)
 
@@ -126,3 +126,4 @@ export Q_of_θφ,Q_of_θϕ,P_of_θφ,P_of_θϕ,θ_of_QP,φ_of_QP,ϕ_of_QP,jz,jx,
     """
     arc_between_QP(Q1::Real,P1::Real,Q2::Real,P2::Real)=arc_between_θϕ(θ_of_QP(Q1,P1),ϕ_of_QP(Q1,P1),θ_of_QP(Q2,P2),ϕ_of_QP(Q2,P2))
 end
+

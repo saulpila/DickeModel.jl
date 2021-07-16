@@ -1,6 +1,17 @@
 # Dicke.DickeHusimiProjections
+```@meta
+CurrentModule = Dicke.DickeHusimiProjections
+```
+## Integrals of arbitrary functions
+```@docs
+∫∫dqdpδϵ
+matrix_QP∫∫dqdpδϵ
+energy_shell_average
+```
 
-```@autodocs
-Modules = [Dicke.DickeHusimiProjections]
-Order   = [:type,:function]
+## Integrals of Husimi functions
+```@docs
+rényi_occupation_and_proj_husimi_QP_matrix
+rényi_occupation
+proj_husimi_QP_matrix
 ```

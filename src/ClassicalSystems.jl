@@ -12,8 +12,8 @@ using LinearAlgebra
 abstract struct ClassicalSystem
 ```
 This abstract object represents a classical system that may be passed to multiple functions
-in this module. To generate a system, use the subtypes [`ClassicalDicke.ClassicalDickeSystem`](@ref Main.ClassicalDicke.ClassicalDickeSystem)
-or use [`ClassicalLMG.ClassicalLMGSystem`](@ref Main.ClassicalDicke.ClassicalLMGSystem).
+in this module. To generate a system, use [`ClassicalDicke.ClassicalDickeSystem`](@ref Main.ClassicalDicke.ClassicalDickeSystem)
+or use [`ClassicalLMG.ClassicalLMGSystem`](@ref Main.ClassicalLMG.ClassicalLMGSystem).
 """
 abstract type ClassicalSystem end
 
@@ -171,3 +171,5 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
         return lyapunov_spectrum(v...)
      end
 end
+
+ 

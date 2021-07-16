@@ -1,6 +1,6 @@
 module DickeHusimiProjections
 
-export ∫∫dqdpδϵ,proj_husimi_QP_matrix,loc_measure
+export ∫∫dqdpδϵ,proj_husimi_QP_matrix,rényi_occupation,rényi_occupation_and_proj_husimi_QP_matrix,energy_shell_average
 import ..DickeBCE
 import ..ClassicalSystems
 import Distributed
@@ -22,7 +22,7 @@ import ProgressMeter
     ```
     Computes the integral  
     ```math 
-        \\int \\int dq dp f(\\mathbf{x}) \\delta(h_\\text{cl}(\\mathbf{x}) - \\epsilon)
+        \\int \\int \\text{d}q \\text{d}p f(\\mathbf{x}) \\delta(h_\\text{cl}(\\mathbf{x}) - \\epsilon)
     ```
     using Eq. (8) of Ref. [Pilatowsky2021NatCommun](@cite) and a 
     [Chebyshev–Gauss quadrature](https://en.wikipedia.org/wiki/Chebyshev%E2%80%93Gauss_quadrature)
@@ -34,7 +34,7 @@ import ProgressMeter
     - `ϵ` is a real number corresponding to ``\\epsilon`` above.
     - `Q` and `P` are the ``Q`` and ``P`` coordinates of ``\\mathbf{x}`` above.
     - `f` should be function with signature `f([Q,q,P,p])` that returns values that
-      may be added together (Numbers, Arrays etc...).
+      may be added together (e.g. numbers, arrays, etc...).
     - `p_res` is the resolution of the integral. The amount of nodes for the
       quadrature will be equal to `2*floor(p₊/p_res) + 1`, where `p₊` is defined
       below Eq. (9) of Ref. [Pilatowsky2021NatCommun](@cite). Default is `0.01`.
@@ -45,7 +45,7 @@ import ProgressMeter
       only the ``q_+`` (``q_-``) term is taken in Eq. (8) of Ref. [Pilatowsky2021NatCommun](@cite).
       If it is `nothing`, both terms are added.
     """
-    function ∫∫dqdpδϵ(system::ClassicalDickeSystem,
+    function ∫∫dqdpδϵ(system::ClassicalDickeSystem;
         ϵ::Real,
         Q::Real,
         P::Real,
@@ -124,8 +124,8 @@ import ProgressMeter
         res::Real=0.1,
         symmetricQP::Bool=false,
         symmetricP::Bool=symmetricQP,
-        paralelize::Bool=(Distributed.myid()==1),
-        showprogress::Bool = true,
+        parallelize::Bool=(Distributed.myid()==1),
+        show_progress::Bool = true,
         pbatch_size::Integer=Int(min(ceil((4/res)^2/Distributed.nprocs()/10),50)))
     ```
     Returns  a tuple `(Qs, Ps, mat)` where `Qs` and `Ps` are real vectors spanning
@@ -137,17 +137,18 @@ import ProgressMeter
     - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `ϵ` is a real number (see arguments for [`∫∫dqdpδϵ`](@ref)).
     - `f` should be function with signature `f([Q,q,P,p])` that returns values that
-      may be added together (Numbers, Arrays etc...).
+      may be added together (e.g. numbers, arrays, etc...).
     - `res` determines the separation between the elements of `Qs` and `Ps`. It also
-      determines `p_res` in the calls to [`∫∫dqdpδϵ`](@ref).
+      determines `p_res` in the calls to [`∫∫dqdpδϵ`](@ref). It should be a positive
+      real number that is an integer fraction of 2 (i.e. ``2/n`` for some ``n \\in \\mathbb{N}``)
     - If `symmetricQP` is `true`, only the non-positive entries of `Q` and `P` will be computed, 
       and the other entries will be mirrored. Default is `false`.
     - If `symmetricP` is `true`, only the side with 
       non-positive `P` coordinate will be comptued, and the other entries will be mirrored. The default is to 
       be the same that `symmetricQP`.
-    - `paralelize` indicates whether to use all available workers. Defaults to `true` if this function is called 
+    - `parallelize` indicates whether to use all available workers. Defaults to `true` if this function is called 
       from worker `1`, and `false` else.
-    - `showprogress` turns the progress bar on/off. Default is `true`.
+    - `show_progress` turns the progress bar on/off. Default is `true`.
     - `pbatch_size` is the maximum number of batches to run in a single run in a single worker. The default value is automatically
       optimized depending on `res` and the number of workers.
     - `kargs...` are redirected to [`∫∫dqdpδϵ`](@ref).
@@ -158,14 +159,14 @@ import ProgressMeter
         res::Real=0.1,
         symmetricQP::Bool=false,
         symmetricP::Bool=symmetricQP,
-        paralelize::Bool=(Distributed.myid()==1),
-        showprogress::Bool = true,
+        parallelize::Bool=(Distributed.myid()==1),
+        show_progress::Bool = true,
         pbatch_size::Integer=Int(min(ceil((4/res)^2/Distributed.nprocs()/10),50)),
         kargs...)
         
         Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,system,ϵ)
         QPs=[(Q,P) for P in Ps, Q in Qs]
-        if showprogress #revolvemos la matriz para que el ETA del proceso sea más acertada
+        if show_progress #revolvemos la matriz para que el ETA del proceso sea más acertada
             is=1:length(Ps)*length(Qs)
             sh=shuffle(is)
             revsh=[findfirst(x->x==i,sh) for i in is]
@@ -177,10 +178,10 @@ import ProgressMeter
         addbatchsize(f) =function(args...)
             f(batch_size=pbatch_size,args...)
         end
-        mat= (showprogress ? (paralelize ? addbatchsize(ProgressMeter.progress_pmap) : ProgressMeter.map) : (paralelize ? addbatchsize(Distributed.pmap) : map))(QPs) do (Q,P)
+        mat= (show_progress ? (parallelize ? addbatchsize(ProgressMeter.progress_pmap) : ProgressMeter.map) : (parallelize ? addbatchsize(Distributed.pmap) : map))(QPs) do (Q,P)
             ∫∫dqdpδϵ(system;ϵ=ϵ,Q=Q,P=P,f=f,p_res=res,kargs...)
         end
-        if showprogress #desrevolvemos
+        if show_progress #desrevolvemos
             mat=[mat[ind(revsh[iind(i,j)])...] for i in 1:length(Ps), j in 1:length(Qs)]
         end
         if symmetricQP || symmetricP
@@ -207,15 +208,15 @@ import ProgressMeter
         end
     end
     #states puede ser una matriz de estados, o una matriz de altura 4, en cuyo caso se interpreta a los estados como coherentes centrados en Q,q,P,p (las filas)
-    function _husimi_Renyi_powers(systemQ,pt,state,cache,averageallstates;tol=1e-4,averagingfunction=mean,statesAreCentersOfCoherentStates=size(state)[1]==4,αs::AbstractArray{<:Real,1})
+    function _husimi_Renyi_powers(systemQ,pt,state,cache,mix_states;tol=1e-4,mix_function=mean,statesAreCentersOfCoherentStates=size(state)[1]==4,αs::AbstractArray{<:Real,1})
         if statesAreCentersOfCoherentStates
-            cache[1].=DickeBCE.HusimiOfCoherent.((systemQ,),eachcol(state),(pt,))
+            cache[1].=DickeBCE.husimi_of_coherent.((systemQ,),eachcol(state),(pt,))
         else
-            cache[1].=DickeBCE.Husimi(systemQ,pt,state;tol=tol,datacache=cache[1]) #asignamos porque puede pasar que cache[1] sea un numero,
+            cache[1].=DickeBCE.husimi(systemQ,pt,state;tol=tol,datacache=cache[1]) #asignamos porque puede pasar que cache[1] sea un numero,
                                                                                 #en cuyo caso datacache no se usa
         end
-        if averageallstates
-            m=averagingfunction(cache[1])
+        if mix_states
+            m=mix_function(cache[1])
         #    if ! isa(m, Array)
         #        m=[m]
         #    end
@@ -226,29 +227,14 @@ import ProgressMeter
         end
         return cache
     end
-    """
-    ```julia
-    function ∫∫dqdpδϵ_Husimi_Renyi_powers(
-        systemQ::DickeBCE.QuantumDickeSystem;
-        states::Union{Array{<:Number,1},Array{<:Number,2}},
-        res::Real,
-        Htol::Real=1e-4,
-        nonvalue=NaN,
-        averageallstates::Bool=false,
-        averagingfunction::Function=mean,
-        α::Union{AbstractArray{<:Real,1},Real}=2,
-        kargs...)
-    ```
-    Calls matrix_QP∫∫dqdpδϵ PENDING
 
-    """
-    function ∫∫dqdpδϵ_Husimi_Renyi_powers(systemQ::DickeBCE.QuantumDickeSystem;
-        states::Union{Array{<:Number,1},Array{<:Number,2}},
+    function ∫∫dqdpδϵ_Husimi_Renyi_powers(system::DickeBCE.QuantumDickeSystem,
+        states::AbstractVecOrMat{<:Number};
         res::Real,
         Htol::Real=1e-4,
         nonvalue=NaN,
-        averageallstates::Bool=false,
-        averagingfunction::Function=mean,
+        mix_states::Bool=false,
+        mix_function::Function=mean,
         α::Union{AbstractArray{<:Real,1},Real}=2,
         kargs...)
         
@@ -263,17 +249,64 @@ import ProgressMeter
             end
         end
         cache=[gencache() for i in 1:(length(α)+1)]
-        Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(;f=(pt -> _husimi_Renyi_powers(systemQ,pt,states,cache,averageallstates;tol=Htol,averagingfunction=averagingfunction,αs=α)),res=res,nonvalue=nonvalue,kargs...)
+        Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(system.classical_system;f=(pt -> _husimi_Renyi_powers(system,pt,states,cache,mix_states;tol=Htol,mix_function=mix_function,αs=α)),res=res,nonvalue=nonvalue,kargs...)
         matlist=[[m===nonvalue ? nonvalue : real.(m[i]) for m in mat] for i in  1:(length(α)+1)]
         return Qs,Ps,matlist
     end
-    function loc_measure_and_proj_husimi_QP_matrix(systemQ::DickeBCE.QuantumDickeSystem;
-        states::Union{Array{<:Number,1},Array{<:Number,2}},
+    """
+    ```julia
+    function rényi_occupation_and_proj_husimi_QP_matrix(system::DickeBCE.QuantumDickeSystem,
+        states::AbstractVecOrMat{<:Number};
         res::Real,
         Htol::Real=1e-4,
         nonvalue=NaN,
-        averageallstates::Bool=false,
-        averagingfunction::Function=mean,
+        mix_states::Bool=false,
+        mix_function::Function=mean,
+        α::Union{AbstractArray{<:Real,1},Real}=2,
+        matrix_powers::Union{AbstractArray{<:Real,1},Real}=1,
+        kargs...)
+    ```
+    Returns a tuple `(Ls,(Qs,Ps,matrices))` where `Ls` contains the Rényi occupations given by Eq. (30) of Ref. [Villasenor2021](@cite), and `matrices` contains 
+    the values of the projections
+    ```math
+        \\iint \\text{d} q\\text{d} p \\,\\delta(h_\\text{cl}(Q,q,P,p)-\\epsilon)\\, \\mathcal{Q}_{\\psi}(Q,q,P,p)^\\alpha,
+    ```
+    where ``\\mathcal{Q}_{\\psi}(\\mathbf{x}) = \\left | \\left \\langle \\mathbf{x}  \\middle | \\psi \\right \\rangle \\right |^2`` 
+    is the Husimi function of state ``\\left | \\psi \\right \\rangle``, for each ``Q`` in `Qs` and ``P`` in `Ps`.
+    The values ``\\alpha`` in `α` (which may be a vector or a number) determine the order of the Rényi occupations, and `matrix_powers` determine the powers
+    of the projections. 
+
+    # Arguments
+    - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref).
+    - `states` may be a vector (single state) or a matrix of multiple states as columns. 
+      The states are assummed to be in the efficient coherent basis. In the special case
+      that the length of the states is 4, they are instead assumed to be the coordinates
+      `[Q,q,P,p]` of a coherent state, and [`husimi_of_coherent`](@ref DickeBCE.husimi_of_coherent) is used. 
+    - `ϵ`, `Q`, and `P` (which are ``\\epsilon``, ``Q``, and ``P`` above) have to be passed.
+    - `Htol` is `tol` for [`DickeBCE.coherent_overlap`](@ref).
+    - `res` determines the resolution of the integral, as in [`matrix_QP∫∫dqdpδϵ`](@ref)
+    - `nonvalue` is the value to return if ``Q,P`` are outside of the energy shell
+      at ``\\epsilon``. Default is `NaN`.
+    - `mix_states` switches the behaviour if `states` is a matrix. If `false` (default), a result is returned for each
+      state. If `true`, the Husimis are first passed to `mix_function`, and the result is integrated.  
+    - `mix_function` -- when `mix_states` is `true`, this function is evaluated with the resulting Husimis
+      `mix_function([Qstate1,Qstate2, ...])` before manipulating them. The default is `mean`, which is equivalent
+      to treating the matrix `states` as a mixed state with equal weights. Custom weights could be used by passing
+      `mix_function([Qstate1,Qstate2, ...]) = p1*Qstate1 + p2*Qstate2 + ...`. Moreover, `mix_function` may
+      return a vector: for example, `mix_function([Qstate1,Qstate2, ...]) = [Qstate1, (Qstate1 + Qstate2)/2]` would
+      compute `Ls` and `matrices` for two states: first for `state1`, and second the mixed state composed of half `state1` and half `state2`.
+    - `α` may be a number or an array, determining the orders of the Rényi occupations `Ls`. Defaults to `2`.
+    - `matrix_powers` may be a number or an array, determining the orders of the moments in the projections matrices. `matrix_powers`
+       should be a subset of `α ∪ {1}`. Defaults to `1`.
+    - `kargs` are redirected to [`matrix_QP∫∫dqdpδϵ`](@ref)
+    """
+    function rényi_occupation_and_proj_husimi_QP_matrix(system::DickeBCE.QuantumDickeSystem,
+        states::AbstractVecOrMat{<:Number};
+        res::Real,
+        Htol::Real=1e-4,
+        nonvalue=NaN,
+        mix_states::Bool=false,
+        mix_function::Function=mean,
         α::Union{AbstractArray{<:Real,1},Real}=2,
         matrix_powers::Union{AbstractArray{<:Real,1},Real}=1,
         _transposematrixoflistintolistofmatrices::Bool=true,
@@ -285,14 +318,14 @@ import ProgressMeter
             matrix_powers=[matrix_powers]
         end
         if matrix_powers ⊈ α∪[1]
-            error("matrix_powers should be a subset of αs ∪ {1}")
+            error("matrix_powers should be a subset of α ∪ {1}")
         end
         if length(size(states))==1
             resultlength=1
         else
             resultlength=size(states)[2]
-            if averageallstates
-                d=averagingfunction(zeros(resultlength))
+            if mix_states
+                d=mix_function(zeros(resultlength))
                 try
                     if length(size(d))>1
                         throw("")
@@ -303,13 +336,13 @@ import ProgressMeter
                         end
                     end
                 catch
-                    error("averagingfunction should return a scalar or a 1D array of scalars")
+                    error("mix_function should return a scalar or a vector of scalars")
                 end
                 resultlength=length(d)
             end
         end
-        Qs,Ps,matlist=  ∫∫dqdpδϵ_Husimi_Renyi_powers(systemQ;states=states,res=res,Htol=Htol,nonvalue=nonvalue,averageallstates=averageallstates,averagingfunction=averagingfunction,α=α,kargs...)
-        L=loc_measure_from_matrices(matlist,nonvalue=nonvalue,α=α)
+        Qs,Ps,matlist=  ∫∫dqdpδϵ_Husimi_Renyi_powers(system,states;res=res,Htol=Htol,nonvalue=nonvalue,mix_states=mix_states,mix_function=mix_function,α=α,kargs...)
+        L=rényi_occupation_from_matrices(matlist,nonvalue=nonvalue,α=α)
         if _transposematrixoflistintolistofmatrices
             matproj=[[Union{typeof(nonvalue),Float64}[m===nonvalue ? nonvalue : m[i] for m in matlist[findfirst(α->α==mp,[1;α])]] for mp in matrix_powers] for i in 1:resultlength]
             if length(matrix_powers)==1
@@ -329,7 +362,7 @@ import ProgressMeter
         return L,(Qs,Ps,matproj)
 
     end
-    function loc_measure_from_matrices(matlist;nonvalue=NaN,α::Union{AbstractArray{<:Real,1},Real}=2)
+    function rényi_occupation_from_matrices(matlist;nonvalue=NaN,α::Union{AbstractArray{<:Real,1},Real}=2)
         if ! isa(α, AbstractArray)
             α=[α]
         end
@@ -360,13 +393,13 @@ import ProgressMeter
                ∫Qα[i-1]+=v[i]
            end
         end
-        res=[_loc_measure_from_integrals.(∫Qα[i],∫Q,∫1,α) for (i,α) in enumerate(α)]
+        res=[_rényi_occupation_from_integrals.(∫Qα[i],∫Q,∫1,α) for (i,α) in enumerate(α)]
         if length(α)==1
             res=res[1]
         end
         return res
     end
-    function _loc_measure_from_integrals(∫Qα::Number,∫Q::Number,∫1::Number,α::Real)
+    function _rényi_occupation_from_integrals(∫Qα::Number,∫Q::Number,∫1::Number,α::Real)
         if α==1
             r= ∫Q*exp(-∫Qα/∫Q)
         elseif α==0
@@ -378,12 +411,58 @@ import ProgressMeter
         end
         return real(r/∫1)
     end
-    function loc_measure(;kargs...)
-        return loc_measure_and_proj_husimi_QP_matrix(;_transposematrixoflistintolistofmatrices=false,kargs...)[1]
+    """
+    ```julia
+    function rényi_occupation
+    ```
+    Returns only the Rényi occupations `Ls` in [`rényi_occupation_and_proj_husimi_QP_matrix`](@ref), same arguments apply, although `matrix_powers` is ignored.
+    """
+    function rényi_occupation(args...;kargs...)
+        
+        return rényi_occupation_and_proj_husimi_QP_matrix(args...;_transposematrixoflistintolistofmatrices=false,kargs...)[1]
     end
-    function proj_husimi_QP_matrix(;kargs...)
-        return loc_measure_and_proj_husimi_QP_matrix(;α=Real[],kargs...)[2]
+    """
+    ```julia
+    function proj_husimi_QP_matrix
+    ```
+    Returns only the projection matrices `(Qs,Ps,matrices)` in [`rényi_occupation_and_proj_husimi_QP_matrix`](@ref), same arguments apply, although `α` should not be passed.
+    """
+    function proj_husimi_QP_matrix(args...; matrix_powers::Union{AbstractArray{<:Real,1},Real}=1,kargs...)
+        α = matrix_powers
+        if isa(α,AbstractArray)
+            α = setdiff(matrix_powers,[1])
+        end
+        return rényi_occupation_and_proj_husimi_QP_matrix(args...;α=α, matrix_powers=matrix_powers,kargs...)[2]
     end
+    """
+    ```julia
+    function energy_shell_average(system::ClassicalDickeSystem;
+        ϵ::Real,
+        f::Function,
+        res::Real=0.01,
+        symmetricQP::Bool=false,
+        symmetricP::Bool=symmetricQ)
+    ```
+    Returns the energy shell average
+    
+    ```math 
+    \\frac{j^2}{(2\\pi)^2\\nu(\\epsilon)}\\int_{\\mathcal{M}}\\!\\!\\text{d}\\mathbf{x}\\,  \\delta(h_\\text{cl}(\\mathbf{x})-\\epsilon) f(\\mathbf{x})
+    ```
+    of `f([Q,q,P,p])`.
+    # Arguments
+    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `ϵ` is a real number
+    - `f` should be function with signature `f([Q,q,P,p])` that returns values that
+      may be added together (e.g. numbers, arrays, etc...).
+    - `res` determines the separation between the elements of `Qs` and `Ps`. It also
+      determines `p_res` in the calls to [`∫∫dqdpδϵ`](@ref). It should be a positive
+      real number that is an integer fraction of 2 (i.e. ``2/n`` for some ``n \\in \\mathbb{N}``)
+    - If `symmetricQP` is `true`, only the non-positive entries of `Q` and `P` will be computed, 
+      and the other entries will be mirrored. Default is `false`.
+    - If `symmetricP` is `true`, only the side with 
+      non-positive `P` coordinate will be comptued, and the other entries will be mirrored. The default is to 
+      be the same that `symmetricQP`.
+    """
     function energy_shell_average(system::ClassicalDickeSystem;
         ϵ::Real,
         f::Function,
@@ -419,4 +498,28 @@ import ProgressMeter
     end
 
 end
+
+
+
+
+ 
+ 
+ 
+
+ 
+
+
+
+       
+
+ 
+
+
+
+
+
+
+
+
+
 

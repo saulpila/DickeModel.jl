@@ -5,6 +5,7 @@ push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 cache_fold_name="./diags"
 use_current_dir_for_diags=on_github
+on_github=false
 using Dicke
 ```
 The module [`Dicke.DickeBCE`](@ref Dicke.DickeBCE) works with the quantum Dicke model
@@ -28,7 +29,7 @@ To load the eigenbasis, simply use [`diagonalization`](@ref Dicke.DickeBCE.diago
 if !use_current_dir_for_diags #hide
 @time eigenenergies,eigenstates =  diagonalization(systemQ)
 else #hide
-@time eigenenergies,eigenstates =  diagonalization(systemQ, cache_folder=cache_fold_name)  #hide
+@time eigenenergies,eigenstates =  diagonalization(systemQ, cache_folder=cache_fold_name, load_cache=false)  #hide
 end #hide
 nothing; #hide
 ```
@@ -63,8 +64,8 @@ end #hide
 
 ϵₓ = -0.5
 x = Point(systemC, Q=-1, P=0, p=0, ϵ=ϵₓ)
-coherent_state = coherentBCE(systemQ, x)
-coherent_state_eigenbasis = transpose(eigenstates)*coherent_state 
+coh_state = coherent_state(systemQ, x)
+coherent_state_eigenbasis = transpose(eigenstates)*coh_state 
 abscₖ²=abs2.(coherent_state_eigenbasis)
 ϵₖs = eigenenergies/j
 
@@ -83,13 +84,14 @@ savefig("LDoS_quantum.svg");nothing #hide
 See [this example](@ref semiclassicalLDoS) for a semiclassical
 computation of the envelope of this function.
 
-## Survival probability of coherent state
-Let us compare the survival probability of a coherent state, with
-the truncated Wigner approximation. (See Ref. [Villasenor2020](@cite))
+## [Evolution of coherent state vs TWA](@id TWAvsQuantum)
+Let us compare the evolution of a quantum state with that given by truncated Wigner
+approximation (see Refs. [Villasenor2020](@cite), [Pilatowsky2020](@cite)).
 ```@example examples
 using Plots
-import Dicke.TruncatedWignerApproximation
+using Dicke.TruncatedWignerApproximation
 using Dicke.DickeBCE, Dicke.ClassicalDicke
+using LinearAlgebra
 j = 30
 systemC = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
 systemQ = QuantumDickeSystem(systemC, j = j, Nmax=120)
@@ -98,36 +100,69 @@ eigenenergies,eigenstates =  diagonalization(systemQ)
 end #hide
 
 x = Point(systemC, Q=1.75, P=0, p=0, ϵ=-0.5)
-coherent_state=coherentBCE(systemQ, x)
+coh_state=coherent_state(systemQ, x)
+W = coherent_Wigner_HWxSU2(x,j=j)
+nothing #hide 
+```
+
+First, we compare the expectation value of the observable ``\hat{J}_z^2``.
+Note that we use [`Weyl.Jz²`](@ref Dicke.TruncatedWignerApproximation.Weyl.Jz²)`(j)`,
+which is not the same as [`Weyl.Jz`](@ref Dicke.TruncatedWignerApproximation.Weyl.Jz)`(j)^2`.
+```@example examples
+ts= 0:0.05:40
+evolution = evolve(ts, coh_state, 
+                eigenstates=eigenstates,
+                eigenenergies=eigenenergies);
+Jz²=DickeBCE.Jz(systemQ)^2
+exvals = [real(dot(v,Jz²,v)) for v in eachcol(evolution)]
+
+N=20000
+if !on_github N=1000 end
+TWA = average(systemC,
+         distribution = W,
+         observable = Weyl.Jz²(j), 
+         ts = ts,
+         N = N)
+
+plot(ts, [exvals TWA], 
+    size=(700,350), label=["Quantum" "TWA"],
+    xlabel = "time", ylabel="Jz²")
+savefig("Jz2_QvsTWA.svg");nothing #hide
+```
+![](Jz2_QvsTWA.svg)
+
+Now let us take a look at the survival probability (see Ref. [Villasenor2020](@cite)).
+```@example examples
 ts=exp10.(-2:0.01:3)
 
 N=20000
 if !on_github N=1000 end
 classical_SP = TruncatedWignerApproximation.survival_probability(
     systemC; 
-    distribution=TruncatedWignerApproximation.coherent_Wigner_HWxSU2(x,j=j),
+    distribution = W,
     N=N, ts=ts
 )
 quantum_SP = DickeBCE.survival_probability(
     ts,
-    state=coherent_state, 
+    state=coh_state, 
     eigenstates=eigenstates, 
     eigenenergies=eigenenergies
 )
 
-plot(ts, quantum_SP, yscale=:log10, xscale=:log10, 
-    label="TWA", xlabel="time", ylabel="Survival probability")
-plot!(ts, classical_SP, label="Quantum", ylim=(1e-4,1))
+plot(ts, [quantum_SP classical_SP], 
+    yscale=:log10, xscale=:log10, 
+    ylim=(1e-4,1), label=["Quantum" "TWA"], 
+    xlabel="time", ylabel="Survival probability")
 savefig("SP_QvsTWA.svg");nothing #hide
 ```
 ![](SP_QvsTWA.svg)
 
 ## [Efficient Husimi functions](@id exampletolhusimis)
 
-The functions [`DickeBCE.Husimi`](@ref Dicke.DickeBCE.Husimi),  [`DickeBCE.coherentOverlap`](@ref Dicke.DickeBCE.coherentOverlap),
-and [`DickeBCE.coherentBCE`](@ref Dicke.DickeBCE.coherentBCE) all accept a `tol` argument, which allows to significally speed
+The functions [`DickeBCE.husimi`](@ref Dicke.DickeBCE.husimi),  [`DickeBCE.coherent_overlap`](@ref Dicke.DickeBCE.coherent_overlap),
+and [`DickeBCE.coherent_state`](@ref Dicke.DickeBCE.coherent_state) all accept a `tol` argument, which allows to significally speed
 up computation time at the cost of slight numerical precision [Pilatowsky2020Notes](@cite). In this example we show how significant this speedup can be.
-Let us construct a big system (Do not try to diagonalize such a big system! Your computer might explode!)
+Let us construct a big system:
 ```@example randstateHusimi
 using Dicke
 using Dicke.DickeBCE
@@ -139,9 +174,11 @@ Nmax = 1200
 system = QuantumDickeSystem(ω₀=1, ω=1, γ=1, j=j, Nmax=Nmax);
 nothing; #hide
 ```
-For the sake of example, let us construct some random in a simple manner (although
+**Do not try to diagonalize such a big system! Your computer might explode!**
+
+For the sake of example, let us construct some random states in a simple manner (although
 if you are interested in building random states in the eigenbasis, check the function
-[`DickeBCE.randomState`](@ref Dicke.DickeBCE.randomState)).
+[`DickeBCE.random_state`](@ref Dicke.DickeBCE.random_state)).
 ```@example randstateHusimi
 n = 3 #how many random vectors
 D = dimension(system)
@@ -155,28 +192,26 @@ nothing; #hide
 phase space:
 ```@example randstateHusimi
 x = Point(Q=0.6, P=-0.1, p=-0.2, q=-0.8)
+husimi(system,x,random_vectors) #hide
 nothing; #hide
 ```
-We may call [`Husimi`](@ref Dicke.DickeBCE.Husimi)`(system, x, random_vectors)`, which will
+We may call [`husimi`](@ref Dicke.DickeBCE.husimi)`(system, x, random_vectors)`, which will
 return an array with `n` elements. The `i`th element is the result of evaluating the Husimi function 
 of the `i`th state (column) at the point `x`.
-```@setup randstateHusimi
-Husimi(system,x,random_vectors)
-```
 ```@repl randstateHusimi
-@time Husimi(system, x, random_vectors, tol=0)
+@time husimi(system, x, random_vectors, tol=0)
 ```
 By passing `tol=0` we are allowing for no optimization. The code has to build all
 the coefficients of the coherent state and then multiply them by each coefficient in `random_vectors`.
 However, if we allow `tol` to be slightly bigger, things will speed up significantly:
 ```@repl randstateHusimi
-@time Husimi(system, x, random_vectors, tol=1e-14)
+@time husimi(system, x, random_vectors, tol=1e-14)
 ```
 Note that the results barely changed, but this time it used a lot less memory and time. The `tol` argument tells the code it can *chop* a portion of size `tol` off the tails of the distribution of the coherent state (see Ref. [Pilatowsky2020Notes](@cite) for details). You loose almost no information, 
 and you gain a lot of time. The default is `tol = 1e-6`, which gives enough precision
 for most purposes (although you may increase it if you need more precision):
 ```@repl randstateHusimi
-@time Husimi(system, x, random_vectors) #default tol = 1e-6
+@time husimi(system, x, random_vectors) #default tol = 1e-6
 ```
 That's fast!
 
@@ -197,7 +232,7 @@ pts=[[Q,P] for Q in Qs, P in Ps if Q^2+P^2 <= 4]
 
 x = Point(Q=-1.0, P=0, p=0, q=0)
 y = Point(Q= 1.0, P=0, p=0, q=0)
-🐱 = 1/sqrt(2) * (coherentBCE(systemQ, x) + coherentBCE(systemQ, y))
+🐱 = 1/sqrt(2) * (coherent_state(systemQ, x) + coherent_state(systemQ, y))
 
 W=DickeBCE.WignerProjqp(systemQ, 
                     [🐱], 

@@ -1,7 +1,7 @@
 module TruncatedWignerApproximation
     export calculate_distribution,average,variance,
     mcs_for_survival_probability,survival_probability,Weyl,mcs_chain,
-    mcs_for_distributions,monte_carlo_integrate,MonteCarloSystem,coherent_Wigner_HWxSU2
+    mcs_for_distributions,monte_carlo_integrate,MonteCarloSystem,coherent_Wigner_HWxSU2,coherent_Wigner_SU2,coherent_Wigner_HW
 
     using Distributed
     using Distributions
@@ -16,7 +16,8 @@ module TruncatedWignerApproximation
     struct PhaseSpaceDistribution
     ```
     This object represents a probability distribution in the phase space.
-    Currently, the only  implementation is through [`coherent_Wigner_HWxSU2`](@ref TruncatedWignerApproximation.coherent_Wigner_HWxSU2).
+    Currently, the only  implementation is through [`coherent_Wigner_SU2`](@ref),
+     [`coherent_Wigner_HW`](@ref), and [`coherent_Wigner_HWxSU2`](@ref)
     """
     struct PhaseSpaceDistribution
         probability_density
@@ -215,26 +216,17 @@ module TruncatedWignerApproximation
 
         return finalizadora(res)
     end
+
     """
     ```julia
-    function mcs_chain(mcs1::MonteCarloSystem, mcs2::MonteCarloSystem, ...)
-    ```
-    Functionally equivalent to [`mcs_chain`](@ref mcs_chain(::AbstractArray{MonteCarloSystem,1}))`([mcs1, mcs2, ...])`.
-    """
-    function mcs_chain(mcss::Vararg{MonteCarloSystem,N}) where {N}
-        mcs_chain(mcss)
-    end
-    function mcs_chain(iterable)
-        mcs_chain(collect(iterable))
-    end
-    """
-    ```julia
-    function mcs_chain(Fs::AbstractArray{MonteCarloSystem,1})
+    function mcs_chain(Fs::AbstractVector{MonteCarloSystem})
     ```
     Generates a [`MonteCarloSystem`](@ref) by chaining together those in the array `Fs = [monteCarloSystem1, monteCarloSystem2, ...]`.
     The output of the system generated is an array that has the outputs of each system, in the same order as `Fs`.
+    
+    If `Fs` may be any iterable. If it is not an `AbstractVector`, `collect` will be called on it.
     """
-    function mcs_chain(Fs::AbstractArray{MonteCarloSystem,1}) 
+    function mcs_chain(Fs::AbstractVector{MonteCarloSystem}) 
         ts= Fs[1].ts
         N= Fs[1].N
         distribution=Fs[1].distribution
@@ -264,6 +256,18 @@ module TruncatedWignerApproximation
         end
         return MonteCarloSystem(f_inicial,f_loop,reductora,f_final,N,ts,distribution)
     end
+    """
+    ```julia
+    function mcs_chain(mcs1::MonteCarloSystem, mcs2::MonteCarloSystem, ...)
+    ```
+    Functionally equivalent to `mcs_chain([mcs1, mcs2, ...])`.
+    """
+    function mcs_chain(mcss::Vararg{MonteCarloSystem,N}) where {N}
+        mcs_chain(mcss)
+    end
+    mcs_chain(mcss) = mcs_chain(collect(mcss))
+    
+
     function function_from_expression(system::ClassicalSystems.ClassicalSystem,expression)
         varnames=ClassicalSystems.varnames(system)
         if typeof(expression)!=SymEngine.Basic && !isempty(methods(expression))#es una funcion
@@ -577,7 +581,7 @@ module TruncatedWignerApproximation
         will produce a tuple, where the first element is the variance and the second
         the average.
     """
-    function mcs_for_variance(sistema::ClassicalSystems.ClassicalSystem;observable,N::Integer,ts::AbstractArray{<:Real}=[0.0],
+    function mcs_for_variance(system::ClassicalSystems.ClassicalSystem;observable,N::Integer,ts::AbstractArray{<:Real}=[0.0],
         return_average::Bool=false,distribution::PhaseSpaceDistribution)
         onevar=false
 
@@ -587,8 +591,8 @@ module TruncatedWignerApproximation
         end
         tam=length(observable)
 
-        apromediar=[observable;[(x)->f(x...)^2 for f in TruncatedWignerApproximation.function_from_expression.((sistema,),observable)]]
-        mcsa=TruncatedWignerApproximation.mcs_for_averaging(sistema,observable=apromediar,ts=ts,N=N,distribution=distribution)
+        apromediar=[observable;[(x)->f(x...)^2 for f in TruncatedWignerApproximation.function_from_expression.((system,),observable)]]
+        mcsa=TruncatedWignerApproximation.mcs_for_averaging(system,observable=apromediar,ts=ts,N=N,distribution=distribution)
         mf_final=function(res)
             r=mcsa.f_final(res)
             vars=[[re[i+tam] - re[i]^2 for i in 1:tam] for re in r]
@@ -615,9 +619,9 @@ module TruncatedWignerApproximation
     ```
     Calls [`mcs_for_variance`](@ref) and then [`monte_carlo_integrate`](@ref) on the resulting `MonteCarloSystem`. Extra `kargs` are sent to the latter.
     """
-    function variance(sistema::ClassicalSystems.ClassicalSystem;observable,N::Integer,ts::AbstractArray{<:Real}=[0.0],distribution::PhaseSpaceDistribution,return_average=false,kargs...)
-        return TruncatedWignerApproximation.monte_carlo_integrate(sistema,
-            mcs_for_variance(sistema;observable=observable,ts=ts,N=N,distribution=distribution,return_average = return_average);kargs...)
+    function variance(system::ClassicalSystems.ClassicalSystem;observable,N::Integer,ts::AbstractArray{<:Real}=[0.0],distribution::PhaseSpaceDistribution,return_average=false,kargs...)
+        return TruncatedWignerApproximation.monte_carlo_integrate(system,
+            mcs_for_variance(system;observable=observable,ts=ts,N=N,distribution=distribution,return_average = return_average);kargs...)
     end
     """
     ```julia
@@ -868,7 +872,3 @@ module TruncatedWignerApproximation
         end
     end
 end
-
-
-
-

@@ -3,6 +3,7 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
+on_github=false
 using Dicke
 ```
 ## Classical evolution of coherent states
@@ -10,11 +11,12 @@ using Dicke
 The module [`Dicke.TruncatedWignerApproximation`](@ref Dicke.TruncatedWignerApproximation) is a very powerful tool to study the classical evolution
 of distributions in the phase space.
 
-Let us load the module `Dicke.TruncatedWignerApproximation`, together with [`Distributed`](https://docs.julialang.org/en/v1/stdlib/Distributed/) which allows paralelization.  
+Let us load the module `Dicke.TruncatedWignerApproximation`, together with [`Distributed`](https://docs.julialang.org/en/v1/stdlib/Distributed/) which allows parallelization.  
 ```@example examples
 using Distributed
 using Plots,Plots.PlotMeasures
-using Dicke,Dicke.TruncatedWignerApproximation, Dicke.ClassicalDicke
+using Dicke.TruncatedWignerApproximation
+using Dicke.ClassicalDicke
 if false #hide
 addprocs(2) #we add 2 workers. Add as many as there are cores in your computer.
 @everywhere using Dicke,Dicke.TruncatedWignerApproximation
@@ -25,9 +27,9 @@ of all the available workers.
 !!! warning 
     The line 
     ```julia 
-    @everywhere using Dicke, Dicke.TruncatedWignerApproximation
+    @everywhere using Dicke
     ```
-    is necessary to load  `Dicke.TruncatedWignerApproximation` in all workers. You will get errors if you omit it.
+    is necessary to load the module `Dicke` in all workers. You will get errors if you omit it.
     
 For our first example, let us consider the Wigner function of a coherent state,
 evolve it classically using the truncated Wigner approximation, and then look at 
@@ -67,11 +69,14 @@ savefig("distribution_jz_TWA.svg");nothing #hide
 ```
 ![](distribution_jz_TWA.svg)
 
+See [this](@ref TWAvsQuantum) example for a comparison between exact quantum evolution
+and TWA.
+
 We can chain several computations using [`TruncatedWignerApproximation.mcs_chain`](@ref). 
 For example, let's see the evolution of ``q`` and ``p`` for the same coherent state evolving in time, along with the time-averaged
 distribution in the plane ``q,p``.
 ```@example examples
-qs=-4.2:0.02:4.2
+qs=-4.3:0.02:4.3
 ps=-2.4:0.02:2.4
 if !on_github  qs=-4.2:0.5:4.2;ps=-2.4:0.5:2.4 end #hide
 N = 50000
@@ -206,14 +211,16 @@ x = Point(system, Q=-1, P=0, p=0, ϵ=ϵₓ)
 W = coherent_Wigner_HWxSU2(x, j=j)
 N = 1000000
 
-hamiltonian = ClassicalDicke.hamiltonian(system)
 ϵ_binsize = 0.01
 if !on_github N=1000 end #hide
 if !on_github ϵ_binsize=0.1 end #hide
 
 ϵs = -0.8:ϵ_binsize:0
-ρ = calculate_distribution(system, distribution=W, 
-    N=N,x=hamiltonian,xs=ϵs)'
+ρ = calculate_distribution(system, 
+    distribution = W, 
+    N = N, 
+    x = ClassicalDicke.hamiltonian(system), 
+    xs = ϵs)'
 ρ /= sum(ρ)*ϵ_binsize #normalization
 σₓ = energy_width_of_coherent_state(system, x, j)
 gaussian=Distributions.Normal(ϵₓ, σₓ)

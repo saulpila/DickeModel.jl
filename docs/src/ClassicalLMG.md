@@ -1,6 +1,25 @@
 # Dicke.ClassicalLMG
+```@meta
+CurrentModule = Dicke.ClassicalLMG
+```
 
-```@autodocs
-Modules = [Dicke.ClassicalLMG]
-Order   = [:type,:function]
+```@docs
+ClassicalLMGSystem
+hamiltonian
+```
+## Phase space
+```@docs
+Point
+Pointθϕ
+```
+## Roots in `P`
+```@docs
+discriminant_of_P_solution
+P_of_ϵ
+Point(::ClassicalLMGSystem)
+```
+
+## Energy minimizing
+```@docs
+minimum_ϵ_for
 ```
