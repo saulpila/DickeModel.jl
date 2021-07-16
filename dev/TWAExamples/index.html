@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>TWA · DickeModel.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script><link href="../assets/customcss.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">DickeModel.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">The DickeModel.jl package</a></li><li><span class="tocitem">Documentation</span><ul><li><a class="tocitem" href="../ClassicalDicke/">ClassicalDicke</a></li><li><a class="tocitem" href="../DickeBCE/">DickeBCE</a></li><li><a class="tocitem" href="../UPOs/">UPOs</a></li><li><a class="tocitem" href="../TWA/">TWA</a></li><li><a class="tocitem" href="../EnergyShellProjections/">EnergyShellProjections</a></li><li><a class="tocitem" href="../ClassicalLMG/">ClassicalLMG</a></li><li><a class="tocitem" href="../ClassicalSystems/">ClassicalSystems</a></li><li><a class="tocitem" href="../PhaseSpaces/">PhaseSpaces</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../ClassicalDickeExamples/">ClassicalDicke</a></li><li><a class="tocitem" href="../DickeBCEExamples/">DickeBCE (Quantum Dicke)</a></li><li><a class="tocitem" href="../EnergyShellProjectionsExamples/">EnergyShellProjections</a></li><li class="is-active"><a class="tocitem" href>TWA</a><ul class="internal"><li><a class="tocitem" href="#Classical-evolution-of-coherent-states"><span>Classical evolution of coherent states</span></a></li><li><a class="tocitem" href="#Fidelity-out-of-time-order-correlator-(FOTOC)"><span>Fidelity out-of-time order correlator (FOTOC)</span></a></li><li><a class="tocitem" href="#semiclassicalLDoS"><span>Energy profiles of a coherent state</span></a></li></ul></li><li><a class="tocitem" href="../ClassicalLMGExamples/">ClassicalLMG</a></li><li><a class="tocitem" href="../UPOsExamples/">UPOs</a></li></ul></li><li><a class="tocitem" href="../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>TWA</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>TWA</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/saulpila/DickeModel.jl/blob/master/docs/src/TWAExamples.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Examples-for-TrucatedWingerApproximation"><a class="docs-heading-anchor" href="#Examples-for-TrucatedWingerApproximation">Examples for TrucatedWingerApproximation</a><a id="Examples-for-TrucatedWingerApproximation-1"></a><a class="docs-heading-anchor-permalink" href="#Examples-for-TrucatedWingerApproximation" title="Permalink"></a></h1><h2 id="Classical-evolution-of-coherent-states"><a class="docs-heading-anchor" href="#Classical-evolution-of-coherent-states">Classical evolution of coherent states</a><a id="Classical-evolution-of-coherent-states-1"></a><a class="docs-heading-anchor-permalink" href="#Classical-evolution-of-coherent-states" title="Permalink"></a></h2><p>The module <a href="../TWA/#DickeModel.TWA"><code>DickeModel.TWA</code></a> is a very powerful tool to study the classical evolution of distributions in the phase space.</p><p>Let us load the module <code>DickeModel.TWA</code>, together with <a href="https://docs.julialang.org/en/v1/stdlib/Distributed/"><code>Distributed</code></a> which allows parallelization.  </p><pre><code class="language-julia">using Distributed
+using Plots,Plots.PlotMeasures
+using DickeModel.TWA
+using DickeModel.ClassicalDicke
+addprocs(2) #we add 2 workers. Add as many as there are cores in your computer.
+@everywhere using DickeModel,DickeModel.TWA</code></pre><p>The functions from <a href="../TWA/#DickeModel.TWA"><code>DickeModel.TWA</code></a> will make use of all the available workers.</p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>The line </p><pre><code class="language-julia">@everywhere using DickeModel</code></pre><p>is necessary to load the module <code>DickeModel</code> in all workers. You will get errors if you omit it.</p></div></div><p>For our first example, let us consider the Wigner function of a coherent state, evolve it classically using the truncated Wigner approximation, and then look at  the expected value of the Weyl symbol of the observable <span>$\hat{j}_z=\hat{J}_z/j$</span> in time with  <a href="../TWA/#DickeModel.TWA.average"><code>TWA.average</code></a>. Note the usage of <a href="../TWA/#DickeModel.TWA.Weyl.Jz-Tuple{Real}"><code>Weyl.Jz</code></a>.</p><pre><code class="language-julia">system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
+x = Point(system, Q=1, P=1, p=0, ϵ=0.5)
+j = 300
+W = coherent_Wigner_HWxSU2(x,j=j)
+jz = Weyl.Jz(j)/j
+times = 0:0.05:40
+
+N = 20000
+jz_average=average(system;observable=jz, distribution=W, N = N, ts=times)
+plot(times,jz_average, xlabel=&quot;time&quot;,
+    ylabel=&quot;jz&quot;,key=false,ylim=(-1,1), size=(700,350))</code></pre><p><img src="../average_jz_TWA.svg" alt/></p><p>Okay, but we can do more. Let&#39;s see how the whole distribution of <span>${j}_z$</span> evolves classically using <a href="../TWA/#DickeModel.TWA.calculate_distribution"><code>TWA.calculate_distribution</code></a>.</p><pre><code class="language-julia">y_axis_values = -1.1:0.01:1.1
+matrix = calculate_distribution(system; distribution=W, N = N,
+    x=:t,  ts=times,
+    y=jz, ys=y_axis_values)
+heatmap(times, y_axis_values, matrix,
+    size=(700,350), color=cgrad(:gist_heat, rev=true),
+    xlabel=&quot;time&quot;, ylabel=&quot;jz&quot;)</code></pre><p><img src="../distribution_jz_TWA.svg" alt/></p><p>See <a href="../DickeBCEExamples/#TWAvsQuantum">this</a> example for a comparison between exact quantum evolution and TWA.</p><p>We can chain several computations using <a href="../TWA/#DickeModel.TWA.mcs_chain"><code>TWA.mcs_chain</code></a>.  For example, let&#39;s see the evolution of <span>$q$</span> and <span>$p$</span> for the same coherent state evolving in time, along with the time-averaged distribution in the plane <span>$q,p$</span>.</p><pre><code class="language-julia">qs=-4.3:0.02:4.3
+ps=-2.4:0.02:2.4
+N = 50000
+
+mcs=mcs_chain(
+    mcs_for_distributions(
+        system; N = N,
+        distribution=W,
+        y=:t,  ts=times,
+        x=:q, xs=qs),
+    mcs_for_distributions(
+            system; N = N,
+            distribution=W,
+            y=:p, ys=ps,
+            x=:t,  ts=times),
+    mcs_for_distributions(
+        system; N = N,
+        distribution=W,
+        x=:q,  xs=qs,
+        y=:p, ys=ps,ts=times)
+)
+matrix_q_vs_t,matrix_t_vs_p,matrix_q_vs_p = monte_carlo_integrate(system,
+    mcs;ts=times,N=N,distribution=W,tolerate_errors=false)
+
+
+plot(heatmap(qs,times, matrix_q_vs_t,
+        color=cgrad(:gist_heat, rev=true),
+        ylabel=&quot;time&quot;, xlabel=&quot;q&quot;, xmirror =true,
+        ymirror =true, bottom_margin = -15mm),
+    heatmap(times,ps, matrix_t_vs_p,
+        color=cgrad(:gist_heat, rev=true),
+        xlabel=&quot;time&quot;, ylabel=&quot;p&quot;, right_margin = -15mm),
+    heatmap(qs,ps, matrix_q_vs_p,
+        color=cgrad(:gist_heat, rev=true),
+        ticks=:none,size=(400,400),margin = -15mm),
+    layout=(@layout [_ °;
+                     ° °]),
+    color=cgrad(:gist_heat, rev=true),
+    size=(800,800),colorbar=:none,link=:both)</code></pre><p><img src="../distribution_qptime_TWA.svg" alt/></p><p>The function <a href="../TWA/#DickeModel.TWA.calculate_distribution"><code>calculate_distribution</code></a> can even animate the evolution (with a little help from the wonderful <a href="https://docs.juliaplots.org/latest/animations/"><code>@animate</code> from Plots</a>).</p><pre><code class="language-julia">N = 1000000
+times = 0:0.1:40
+
+matrices = calculate_distribution(system; distribution=W, N = N,
+    x=:q, y=:p,xs=qs, ys=ps, ts=times, animate=true, maxNBatch=200000);
+animation=@animate for mat in matrices
+    heatmap(qs, ps, mat,
+        color = cgrad(:gist_heat, rev=true), size=(600,600),
+        xlabel=&quot;q&quot;, ylabel=&quot;p&quot;, key=false)
+end
+mp4(animation,
+    &quot;animation_of_evolution.mp4&quot;,
+    fps=30)</code></pre><p><video src="../animation_of_evolution.mp4" controls="true" title><a href="../animation_of_evolution.mp4"></a></video></p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Computing animations with <a href="../TWA/#DickeModel.TWA.calculate_distribution"><code>calculate_distribution(..., animate = true, ...)</code></a> may need a lot of RAM. You can estimate the maximum amount of RAM needed using the shorthand formula  </p><p><span>$(\text{\# of workers}) \times (\text{length of }$</span> <code>xs</code> <span>$)\times (\text{length of }$</span> <code>ys</code> <span>$)\times (\text{length of }$</span> <code>ts</code> <span>$) \times (64 \text{ bits})$</span>.</p><p>But this number would only be reached if trajectories filled all of the matrices in all of the workers at all the timesteps. You may stay much below this number by passing <code>maxNBatch</code> to <a href="../TWA/#DickeModel.TWA.calculate_distribution"><code>calculate_distribution</code></a> (or to  <a href="../TWA/#DickeModel.TWA.monte_carlo_integrate"><code>monte_carlo_integrate</code></a>). This parameter limits the number of trajectories that are calculated in batch in each  worker. Between batches, data is flushed to the main worker, which takes time, but liberates RAM.  If generating the animation is filling up your RAM, try to decrease <code>maxNBatch</code>.</p></div></div><h2 id="Fidelity-out-of-time-order-correlator-(FOTOC)"><a class="docs-heading-anchor" href="#Fidelity-out-of-time-order-correlator-(FOTOC)">Fidelity out-of-time order correlator (FOTOC)</a><a id="Fidelity-out-of-time-order-correlator-(FOTOC)-1"></a><a class="docs-heading-anchor-permalink" href="#Fidelity-out-of-time-order-correlator-(FOTOC)" title="Permalink"></a></h2><p>The FOTOC is a quantum equivalent of the classcal Lyapunov exponent. It is just the variance <span>$\text{var}(Q)+\text{var}(q)+\text{var}(P)+\text{var}(p)$</span> as a function of time. It may be calculated using the TWA.  (See Ref. <a href="../references/#Pilatowsky2020">[11]</a> and references therein).</p><pre><code class="language-julia">using DickeModel.ClassicalDicke
+using DickeModel.ClassicalSystems
+using DickeModel.TWA
+using Plots
+system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
+
+ts = 0:0.1:50
+j = 1000
+x = Point(system, Q=1, P=0, p=0, ϵ=-0.6)
+W = coherent_Wigner_HWxSU2(x, j=j)
+N = 10000
+
+FOTOC=sum.(variance(system; observable=[:Q,:q,:P,:p],
+                    distribution=W, N=N, ts=ts, tol=1e-8))
+
+plot(ts, FOTOC,
+     xlabel=&quot;time&quot;, ylabel=&quot;FOTOC&quot;,
+     label=&quot;FOTOC&quot;, yscale=:log10)
+lyapunov = lyapunov_exponent(system, u₀=x)
+plot!(t-&gt;exp(2*lyapunov*t)*2/j, 0, 14,
+    label=&quot;exp(2λt)*2ħ&quot;, key=:bottomright)</code></pre><p><img src="../FOTOC_TWA.svg" alt/></p><h2 id="semiclassicalLDoS"><a class="docs-heading-anchor" href="#semiclassicalLDoS">Energy profiles of a coherent state</a><a id="semiclassicalLDoS-1"></a><a class="docs-heading-anchor-permalink" href="#semiclassicalLDoS" title="Permalink"></a></h2><p>We have a semiclassical formula for the energy width of a coherent state, given in App. A of Ref. <a href="../references/#Lerma2018">[7]</a>, and implemented in <a href="../ClassicalDicke/#DickeModel.ClassicalDicke.energy_width_of_coherent_state"><code>ClassicalDicke.energy_width_of_coherent_state</code></a>. Let&#39;s check this formula against the semiclassical local density of states given by Eq. (E.3) of Ref. <a href="../references/#Villasenor2020">[17]</a>.</p><pre><code class="language-julia">using DickeModel.ClassicalDicke
+using DickeModel.ClassicalSystems
+using DickeModel.TWA
+using Distributions
+using Plots
+system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
+
+ts = 0:0.1:50
+j = 1000
+ϵₓ = -0.5
+x = Point(system, Q=-1, P=0, p=0, ϵ=ϵₓ)
+W = coherent_Wigner_HWxSU2(x, j=j)
+N = 1000000
+
+ϵ_binsize = 0.01
+
+ϵs = -0.8:ϵ_binsize:0
+ρ = calculate_distribution(system,
+    distribution = W,
+    N = N,
+    x = ClassicalDicke.hamiltonian(system),
+    xs = ϵs)&#39;
+ρ /= sum(ρ)*ϵ_binsize #normalization
+σₓ = energy_width_of_coherent_state(system, x, j)
+gaussian=Distributions.Normal(ϵₓ, σₓ)
+
+plot(ϵs,ρ, label=&quot;∫ w(x) δ(ϵ - h(x)) dx&quot;)
+plot!(ϵ-&gt;pdf(gaussian,ϵ), ϵs,
+    label=&quot;normal(σ)&quot;, linestyle=:dash,
+    xlabel=&quot;ϵ&quot;, ylabel=&quot;Probability density&quot;)</code></pre><p><img src="../LDoS_classical.svg" alt/></p><p>See <a href="../DickeBCEExamples/#quantumldoscoherentstateex">this example</a> for the full quantum computation of the energy spectrum of a coherent state.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../EnergyShellProjectionsExamples/">« EnergyShellProjections</a><a class="docs-footer-nextpage" href="../ClassicalLMGExamples/">ClassicalLMG »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Friday 16 July 2021 16:44">Friday 16 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
