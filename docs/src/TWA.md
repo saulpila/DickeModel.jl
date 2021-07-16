@@ -1,6 +1,6 @@
-# Dicke.TruncatedWignerApproximation
+# DickeModel.TWA
 ```@meta
-CurrentModule = Dicke.TruncatedWignerApproximation
+CurrentModule = DickeModel.TWA
 ```
 ## Monte-Carlo systems
 ```@docs
@@ -37,11 +37,11 @@ calculate_distribution
 ```
 
 
-## [Weyl symbols](@id Dicke.TruncatedWignerApproximation.Weyl)
-The submodule `TruncatedWignerApproximation.Weyl` generates classical phase-space
+## [Weyl symbols](@id DickeModel.TWA.Weyl)
+The submodule `TWA.Weyl` generates classical phase-space
 observables that may be passed as the argument `observable` of [`average`](@ref average), [`calculate_distribution`](@ref calculate_distribution), etc. All the following functions return [SymEngine](https://juliahub.com/docs/SymEngine) objects,
 so they may be operated as if they were numbers. 
 ```@autodocs
-Modules = [TruncatedWignerApproximation.Weyl]
+Modules = [TWA.Weyl]
 Order   = [:type,:function]
 ```

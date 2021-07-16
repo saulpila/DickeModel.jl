@@ -1,4 +1,4 @@
-# Dicke.PhaseSpaces
+# DickeModel.PhaseSpaces
 This module provides formulas for the cannonical transformation ``(Q,P)\mapsto (\theta,\phi)`` 
 we use throughout this package. 
 
@@ -9,6 +9,6 @@ we use throughout this package.
     In the references, the glyph ``\phi`` is used.
     
 ```@autodocs
-Modules = [Dicke.PhaseSpaces]
+Modules = [DickeModel.PhaseSpaces]
 Order   = [:type,:function]
 ```

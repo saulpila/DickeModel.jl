@@ -3,14 +3,15 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
-using Dicke
+using DickeModel
+on_github=false
 ```
 
 ## Drawing contours of the available phase space
 We may use the function [`ClassicalDicke.minimum_ϵ_for`](@ref) to draw the contour of the available phase space on the variables
 ``(Q,P)``.
 ```@example examples
-using Dicke.ClassicalDicke
+using DickeModel.ClassicalDicke
 using Plots
 system =  ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
 Qs = Ps = -2:0.01:2
@@ -25,7 +26,7 @@ savefig("contourQP.svg"); nothing #hide
 Here is a plot of the semiclassical density of states
 
 ```@example examples
-using Dicke.ClassicalDicke
+using DickeModel.ClassicalDicke
 using Plots
 system = ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
 ν(ϵ) = density_of_states(system, j=100, ϵ=ϵ)
@@ -42,7 +43,7 @@ This is precisely the red line in Fig. A1. of Ref. [Villasenor2020](@cite).
 
 Here is a way to draw a [Poincaré surface](https://en.wikipedia.org/wiki/Poincar%C3%A9_map) for the Dicke model. We use [`ClassicalSystems.integrate`](@ref) to integrate a bunch of initial conditions. Using the [callback system of DifferentialEquations](https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback), we save the points where ``p=0``.
 ```@example examples
-using Dicke, Dicke.ClassicalDicke, Dicke.ClassicalSystems
+using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
 using Plots
 using DiffEqBase
 
@@ -83,7 +84,7 @@ savefig("poincare_surface.png");nothing #hide
 
 Let us plot the Lyapunov exponents for the Poincaré map of the previous example.
 ```@example examples
-using Dicke, Dicke.ClassicalDicke, Dicke.ClassicalSystems
+using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
 using Plots
 using DiffEqBase
 

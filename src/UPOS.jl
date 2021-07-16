@@ -1,4 +1,4 @@
-module UPOS
+module UPOs
 
 export PO,search_in_interval,approximate_period,
         get_period,follow_PO_family_from_period,
@@ -13,7 +13,7 @@ export PO,search_in_interval,approximate_period,
     using ProgressMeter
     using ..PhaseSpaces
     using ..DickeBCE
-    using ..DickeHusimiProjections
+    using ..EnergyShellProjections
     Id=Matrix{Float64}(I, 4, 4);
     """
     ```julia
@@ -516,7 +516,7 @@ export PO,search_in_interval,approximate_period,
         verbose::Bool =true)
     ```
     Returns a function `T -> po1` that returns a PO from the same family as `po`
-    but with period `T`. This algorithm applies the function  [`monodromy_method_constant_period`](@ref)
+    but with period `T`. This algorithm applies the function [`monodromy_method_constant_period`](@ref)
     repeatedly, increasing or decreasing the period in small perturbations to reach the target.
     
     # Arguments
@@ -879,7 +879,7 @@ export PO,search_in_interval,approximate_period,
     - `po` should be an instance of [`PO`](@ref). 
     - `time_integral_tolerance` is the numerical tolerance for the integral in Eq. (15) of Ref. [Pilatowsky2021](@cite). Default is `1e-7`.
     - `phase_space_integral_resolution` is the phase space resolution for the integral in Eq. (16) of Ref. [Pilatowsky2021](@cite), that is, `res` in
-      [`DickeHusimiProjections.energy_shell_average`](@ref). Default is `0.1`.
+      [`EnergyShellProjections.energy_shell_average`](@ref). Default is `0.1`.
     """
     function overlap_of_tube_with_homogenous_state(system::DickeBCE.QuantumDickeSystem,
         po::PO;
@@ -892,7 +892,7 @@ export PO,search_in_interval,approximate_period,
         ϵ=energy(po)
         symmP = (po == mirror_Pp(po))
         symmQP = (po == mirror_Qq(po)) && symmP
-        return DickeHusimiProjections.energy_shell_average(po.system,
+        return EnergyShellProjections.energy_shell_average(po.system,
                 ϵ=ϵ,
                 f=∫dtHtx,
                 res=res,
@@ -923,4 +923,4 @@ export PO,search_in_interval,approximate_period,
     end
     
 end
-                                                                                                                                                                                                                                                                                                                                                                                                                     
+                                                                                                                                                                         

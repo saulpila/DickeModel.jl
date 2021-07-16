@@ -1,6 +1,6 @@
-# Dicke.ClassicalLMG
+# DickeModel.ClassicalLMG
 ```@meta
-CurrentModule = Dicke.ClassicalLMG
+CurrentModule = DickeModel.ClassicalLMG
 ```
 
 ```@docs

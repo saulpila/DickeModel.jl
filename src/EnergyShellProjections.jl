@@ -1,4 +1,4 @@
-module DickeHusimiProjections
+module EnergyShellProjections
 
 export ∫∫dqdpδϵ,proj_husimi_QP_matrix,rényi_occupation,rényi_occupation_and_proj_husimi_QP_matrix,energy_shell_average
 import ..DickeBCE
@@ -163,7 +163,7 @@ import ProgressMeter
         show_progress::Bool = true,
         pbatch_size::Integer=Int(min(ceil((4/res)^2/Distributed.nprocs()/10),50)),
         kargs...)
-        
+
         Qs,Ps=_generate_QPs(symmetricQP,symmetricP,res,system,ϵ)
         QPs=[(Q,P) for P in Ps, Q in Qs]
         if show_progress #revolvemos la matriz para que el ETA del proceso sea más acertada
@@ -498,28 +498,3 @@ import ProgressMeter
     end
 
 end
-
-
-
-
- 
- 
- 
-
- 
-
-
-
-       
-
- 
-
-
-
-
-
-
-
-
-
-

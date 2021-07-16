@@ -1,6 +1,6 @@
-# Dicke.DickeHusimiProjections
+# DickeModel.EnergyShellProjections
 ```@meta
-CurrentModule = Dicke.DickeHusimiProjections
+CurrentModule = DickeModel.EnergyShellProjections
 ```
 ## Integrals of arbitrary functions
 ```@docs

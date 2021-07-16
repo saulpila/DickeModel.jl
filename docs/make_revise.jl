@@ -1,7 +1,7 @@
 push!(LOAD_PATH,"../src/")
 using Base.Filesystem
 using Revise
-using Dicke
+using DickeModel
 using Documenter,DocumenterCitations
 while true
 print("Press enter to compile docs")
@@ -12,16 +12,16 @@ catch
 	print("folder locked, close tabs")
 	continue
 end
-revise(Dicke)
+revise(DickeModel)
 sleep(3)
 bib = CitationBibliography("refs.bib")
 
 try
 makedocs(bib,
-         sitename = "Dicke.jl",
-         modules  = [Dicke],
+         sitename = "DickeModel.jl",
+         modules  = [DickeModel],
          pages=[
-                "The Dicke.jl package" => "index.md",
+                "The DickeModel.jl package" => "index.md",
                 "Documentation" => [
                     "ClassicalDicke" => "classicaldicke.md",
 					"ClassicalSystems" => "classicalsystems.md"

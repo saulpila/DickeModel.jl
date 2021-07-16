@@ -1,4 +1,4 @@
-name = "Dicke"
+name = "DickeModel"
 uuid = "4685f1ab-9fd1-4b8e-ac75-b8abf0894442"
 authors = ["Saúl Pilatowsky-Cameo <saulpilatowsky@ciencias.unam.mx>"]
 version = "0.1.0"
@@ -43,7 +43,7 @@ RecursiveArrayTools = "2"
 SymEngine = "0.8"
 Tables = "1"
 WignerSymbols = "2"
-julia = "1.1"
+julia = "1.6"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

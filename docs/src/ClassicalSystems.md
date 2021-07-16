@@ -1,6 +1,6 @@
-# Dicke.ClassicalSystems
+# DickeModel.ClassicalSystems
 ```@meta
-CurrentModule = Dicke.ClassicalSystems
+CurrentModule = DickeModel.ClassicalSystems
 ```
 ```@docs
 ClassicalSystem

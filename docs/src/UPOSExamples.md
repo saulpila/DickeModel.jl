@@ -1,12 +1,13 @@
-# Examples for UPOS
+# Examples for UPOs
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 cache_fold_name="./diags"
 use_current_dir_for_diags=on_github
-using Dicke
+using DickeModel
+on_github=false
 ```
-The module [`Dicke.UPOS`](@ref Dicke.UPOS) provides a toolbox for studying periodic orbits (POs) 
+The module [`DickeModel.UPOs`](@ref DickeModel.UPOs) provides a toolbox for studying periodic orbits (POs) 
 in the classical limit of the Dicke model [Pilatowsky2021](@cite), and their relation with the ubiquitous quantum
 scarring they produce [Pilatowsky2021NatCommun](@cite).
 
@@ -15,39 +16,39 @@ scarring they produce [Pilatowsky2021NatCommun](@cite).
 In Ref. [Pilatowsky2020](@cite), it was shown that two families of periodic orbits
 emmanate from the normal modes of the ground state configuration of the classical Dicke
 model. These families are called family ``\mathcal{A}`` and family ``\mathcal{B}``. They
-are implemented in [`UPOS.family_A`](@ref Dicke.UPOS.family_A) and [`UPOS.family_B`](@ref Dicke.UPOS.family_B), respectively. Let
+are implemented in [`UPOs.family_A`](@ref DickeModel.UPOs.family_A) and [`UPOs.family_B`](@ref DickeModel.UPOs.family_B), respectively. Let
 us look at family ``\mathcal{A}``.
 ```@setup examples
 using Plots
 plotly() #first call generates an info message that we want to hide
 ```
 ```@example examples
-using Dicke
-using Dicke.UPOS
-using Dicke.ClassicalDicke
+using DickeModel
+using DickeModel.UPOs
+using DickeModel.ClassicalDicke
 using Plots
 plotly() #interactive plots
 Plots.isijulia() = true #hide
 
 system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
-fam_A = UPOS.family_A(system)
-fam_A = UPOS.family_A(system, verbose=false) #hide
+fam_A = UPOs.family_A(system)
+fam_A = UPOs.family_A(system, verbose=false) #hide
 nothing; #hide
 ```
 You may retrieve the PO at a given energy ``\epsilon`` by calling `fam_A(ϵ)`,
 ```@repl examples
 po = fam_A(-0.5)
 ```
-Having an instance of [`PO`](@ref Dicke.UPOS.PO), you may extract many properties 
+Having an instance of [`PO`](@ref DickeModel.UPOs.PO), you may extract many properties 
 of the periodic orbit:
 ```@repl examples
-UPOS.lyapunov(po) #Lyapunov exponent 
+UPOs.lyapunov(po) #Lyapunov exponent 
 po.T #period
-UPOS.action(po) #action
-UPOS.jz_PO_average(po) #average of jz along orbit
+UPOs.action(po) #action
+UPOs.jz_PO_average(po) #average of jz along orbit
 ```
 Let us plot the orbits of ``\mathcal{A}`` from the ground state energy up to ``\epsilon = 0``.
-Using [`QPp`](@ref Dicke.UPOS.QPp), we plot them in 3D.
+Using [`QPp`](@ref DickeModel.UPOs.QPp), we plot them in 3D.
 ```@example examples
 ϵ₀ = minimum_energy(system)
 
@@ -75,10 +76,10 @@ but this procedure can be applied on bigger systems, where the scars are more de
 
 First, let us setup our classical and quantum systems.
 ```@example examples
-using Dicke
-using Dicke.DickeBCE
-using Dicke.ClassicalDicke
-using Dicke.DickeHusimiProjections
+using DickeModel
+using DickeModel.DickeBCE
+using DickeModel.ClassicalDicke
+using DickeModel.EnergyShellProjections
 using Plots
 j = 30
 Nmax = 120
@@ -103,10 +104,10 @@ If you want to speed up the computation of the Husimi projections, you may load 
 ```julia
 using Distributed
 addprocs(4) #you may add as many as processors in your computer
-@everywhere using Dicke
+@everywhere using DickeModel
 ```
 We select the eigenstate with `k = 559`. Let's take a look at its Husimi projection
-using [`DickeHusimiProjections.proj_husimi_QP_matrix`](@ref Dicke.DickeHusimiProjections.proj_husimi_QP_matrix).
+using [`EnergyShellProjections.proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix).
 ```@example examples
 k = 559
 state = @view eigenstates[:,k]
@@ -237,27 +238,27 @@ We now can define an initial condition
 u0 = Point(systemC, Q=Q0, P=P1, p=pmax1, ϵ=ϵs[k])
 ```
 
-It is time to use the module `UPOS`. Let us first see how the evolution of this
-point looks like with [`UPOS.QP`](@ref Dicke.UPOS.QP). Let's evolve it for, say, `T = 10`:
+It is time to use the module `UPOs`. Let us first see how the evolution of this
+point looks like with [`UPOs.QP`](@ref DickeModel.UPOs.QP). Let's evolve it for, say, `T = 10`:
 ```@example examples
-using Dicke.UPOS
+using DickeModel.UPOs
 matrixPlot = heatmap(Qs, Ps, mat, xlabel="Q", ylabel="P", key=false)
 scatter(matrixPlot, [(u0[1],u0[3])])
 plot!(QP(PO(systemC, u0, 10)))
 ```
 
-It looks like it is following the scar. To estimate the period, we can use [`UPOS.approximate_period`](@ref Dicke.UPOS.approximate_period).
+It looks like it is following the scar. To estimate the period, we can use [`UPOs.approximate_period`](@ref DickeModel.UPOs.approximate_period).
 We give it a `bound = 0.5`, and it will tell us the time it takes for the periodic condition to come back
 to the same `p` plane inside a neighborhood of radius `bound` around `u0`:
 ```@repl examples
-T = UPOS.approximate_period(systemC, u0; bound=0.5)
+T = UPOs.approximate_period(systemC, u0; bound=0.5)
 ```
 It found a period! The evolution up to that period looks like this:
 ```@example examples
 plot(matrixPlot, QP(PO(systemC, u0, T)))
 ```
 Well, it doesn't come back completely, and it looks a bit wonky, but the monodromy method [DeAguiar1988](@cite), [Baranger1988](@cite), [Pilatowsky2021](@cite), [Simonovi1999](@cite) will come to our aid. This algorithm converges to a true periodic orbit given a good enough initial guess, like ours.
-It is implemented in [`UPOS.monodromy_method_constant_energy`](@ref Dicke.UPOS.monodromy_method_constant_energy), which conserves the energy
+It is implemented in [`UPOs.monodromy_method_constant_energy`](@ref DickeModel.UPOs.monodromy_method_constant_energy), which conserves the energy
 of the initial condition.
 
 ```@repl examples
@@ -269,7 +270,7 @@ plot(matrixPlot, QP(po))
 That is a nice periodic orbit!
 
 We can measure that it is actually scarring the eigenstate using the measure ``\mathcal{P}`` from Ref. [Pilatowsky2021](@cite), which
-is implemented in [`UPOS.scarring_measure`](@ref Dicke.UPOS.scarring_measure):
+is implemented in [`UPOs.scarring_measure`](@ref DickeModel.UPOs.scarring_measure):
 
 ```@repl examples
 scarring_measure(systemQ, state, po)
@@ -277,14 +278,14 @@ scarring_measure(systemQ, state, po)
 This tells us that the state is ``\sim 12`` times more likely to be found near the PO than
 a totally delocalized state.
 
-We can also compute its Lyapunov exponent using [`UPOS.lyapunov`](@ref Dicke.UPOS.lyapunov)
+We can also compute its Lyapunov exponent using [`UPOs.lyapunov`](@ref DickeModel.UPOs.lyapunov)
 ```@repl examples
 lyapunov(po)
 ```
 Interestingly, this orbit is stable, with a zero Lyapunov exponent. However, the eigenenergy of this
 eigenstate, ``\epsilon_k = -0.806`` is in the chaotic region, so we found a little island of stability in the sea of chaos.
 
-We close this example using the function [`UPOS.follow_PO_family_from_energy`](@ref Dicke.UPOS.follow_PO_family_from_energy) to perturb
+We close this example using the function [`UPOs.follow_PO_family_from_energy`](@ref DickeModel.UPOs.follow_PO_family_from_energy) to perturb
 this orbit into higher energies, obtaining a family of POs.
 ```@example examples
 plotly() #interactive plots

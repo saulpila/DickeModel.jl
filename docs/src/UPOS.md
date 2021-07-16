@@ -1,6 +1,6 @@
-# Dicke.UPOS
+# DickeModel.UPOs
 ```@meta
-CurrentModule = Dicke.UPOS
+CurrentModule = DickeModel.UPOs
 ```
 ## Periodic Orbit (PO) type
 ```@docs 

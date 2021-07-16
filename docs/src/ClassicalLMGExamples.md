@@ -3,7 +3,8 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
-using Dicke
+using DickeModel
+on_github=false
 ```
 
 ## Exponential growth of the FOTOC using the TWA
@@ -14,7 +15,7 @@ even though it is a regular system. In this example we calculate such quantity
 using the Truncated Wigner Approximation (TWA)
 
 ```@example examples
-using Dicke.TruncatedWignerApproximation, Dicke.ClassicalLMG
+using DickeModel.TWA, DickeModel.ClassicalLMG
 using Plots
 
 fixed_point = ClassicalLMG.Point(Q=0, P=0)

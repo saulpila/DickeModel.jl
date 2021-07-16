@@ -5,9 +5,10 @@ push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 cache_fold_name="./diags"
 use_current_dir_for_diags=on_github
-using Dicke
+using DickeModel
+on_github=false
 ```
-The module [`Dicke.DickeBCE`](@ref Dicke.DickeBCE) works with the quantum Dicke model
+The module [`DickeModel.DickeBCE`](@ref DickeModel.DickeBCE) works with the quantum Dicke model
 using a very efficient basis known as the coherent efficient basis (BCE for its acronym in Spanish).
 See Refs. [Bastarrachea2014PSa](@cite) and [Bastarrachea2014PSb](@cite) for a detailed explanation on how and why it works. 
 Throughout this examples, we will work with a system size of `j = 30`, but  using this module you can easily go up
@@ -17,12 +18,12 @@ to `j = 100`, as done in Refs. [Pilatowsky2021](@cite), [Pilatowsky2021NatCommun
 Let us start by defining our parameters:
 
 ```@example examples
-using Dicke.DickeBCE, Dicke.ClassicalDicke
+using DickeModel.DickeBCE, DickeModel.ClassicalDicke
 systemQ = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j=30, Nmax=120)
 nothing; #hide
 ```
 
-To load the eigenbasis, simply use [`diagonalization`](@ref Dicke.DickeBCE.diagonalization):
+To load the eigenbasis, simply use [`diagonalization`](@ref DickeModel.DickeBCE.diagonalization):
 
 ```@example examples
 if !use_current_dir_for_diags #hide
@@ -53,7 +54,7 @@ simply do `state_k = eigenstates[:,k]`.
 In this example, we obtain the eigenenergy components of a coherent state.
 ```@example examples
 using Plots
-using Dicke.DickeBCE, Dicke.ClassicalDicke
+using DickeModel.DickeBCE, DickeModel.ClassicalDicke
 j = 30
 systemC = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
 systemQ = QuantumDickeSystem(systemC, j = j, Nmax=120)
@@ -88,8 +89,8 @@ Let us compare the evolution of a quantum state with that given by truncated Wig
 approximation (see Refs. [Villasenor2020](@cite), [Pilatowsky2020](@cite)).
 ```@example examples
 using Plots
-using Dicke.TruncatedWignerApproximation
-using Dicke.DickeBCE, Dicke.ClassicalDicke
+using DickeModel.TWA
+using DickeModel.DickeBCE, DickeModel.ClassicalDicke
 using LinearAlgebra
 j = 30
 systemC = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
@@ -105,8 +106,8 @@ nothing #hide
 ```
 
 First, we compare the expectation value of the observable ``\hat{J}_z^2``.
-Note that we use [`Weyl.Jz²`](@ref Dicke.TruncatedWignerApproximation.Weyl.Jz²)`(j)`,
-which is not the same as [`Weyl.Jz`](@ref Dicke.TruncatedWignerApproximation.Weyl.Jz)`(j)^2`.
+Note that we use [`Weyl.Jz²`](@ref DickeModel.TWA.Weyl.Jz²)`(j)`,
+which is not the same as [`Weyl.Jz`](@ref DickeModel.TWA.Weyl.Jz)`(j)^2`.
 ```@example examples
 ts= 0:0.05:40
 evolution = evolve(ts, coh_state, 
@@ -116,14 +117,14 @@ Jz²=DickeBCE.Jz(systemQ)^2
 exvals = [real(dot(v,Jz²,v)) for v in eachcol(evolution)]
 
 N=20000
-if !on_github N=1000 end
-TWA = average(systemC,
-         distribution = W,
-         observable = Weyl.Jz²(j), 
-         ts = ts,
-         N = N)
+if !on_github N=1000 end #hide
+TWAJz2 = TWA.average(systemC,
+                 distribution = W,
+                 observable = Weyl.Jz²(j), 
+                 ts = ts,
+                 N = N)
 
-plot(ts, [exvals TWA], 
+plot(ts, [exvals TWAJz2], 
     size=(700,350), label=["Quantum" "TWA"],
     xlabel = "time", ylabel="Jz²")
 savefig("Jz2_QvsTWA.svg");nothing #hide
@@ -135,8 +136,8 @@ Now let us take a look at the survival probability (see Ref. [Villasenor2020](@c
 ts=exp10.(-2:0.01:3)
 
 N=20000
-if !on_github N=1000 end
-classical_SP = TruncatedWignerApproximation.survival_probability(
+if !on_github N=1000 end #hide
+classical_SP = TWA.survival_probability(
     systemC; 
     distribution = W,
     N=N, ts=ts
@@ -158,14 +159,14 @@ savefig("SP_QvsTWA.svg");nothing #hide
 
 ## [Efficient Husimi functions](@id exampletolhusimis)
 
-The functions [`DickeBCE.husimi`](@ref Dicke.DickeBCE.husimi),  [`DickeBCE.coherent_overlap`](@ref Dicke.DickeBCE.coherent_overlap),
-and [`DickeBCE.coherent_state`](@ref Dicke.DickeBCE.coherent_state) all accept a `tol` argument, which allows to significally speed
+The functions [`DickeBCE.husimi`](@ref DickeModel.DickeBCE.husimi),  [`DickeBCE.coherent_overlap`](@ref DickeModel.DickeBCE.coherent_overlap),
+and [`DickeBCE.coherent_state`](@ref DickeModel.DickeBCE.coherent_state) all accept a `tol` argument, which allows to significally speed
 up computation time at the cost of slight numerical precision [Pilatowsky2020Notes](@cite). In this example we show how significant this speedup can be.
 Let us construct a big system:
 ```@example randstateHusimi
-using Dicke
-using Dicke.DickeBCE
-using Dicke.ClassicalDicke
+using DickeModel
+using DickeModel.DickeBCE
+using DickeModel.ClassicalDicke
 using LinearAlgebra
 
 j = 600
@@ -177,7 +178,7 @@ nothing; #hide
 
 For the sake of example, let us construct some random states in a simple manner (although
 if you are interested in building random states in the eigenbasis, check the function
-[`DickeBCE.random_state`](@ref Dicke.DickeBCE.random_state)).
+[`DickeBCE.random_state`](@ref DickeModel.DickeBCE.random_state)).
 ```@example randstateHusimi
 n = 3 #how many random vectors
 D = dimension(system)
@@ -194,7 +195,7 @@ x = Point(Q=0.6, P=-0.1, p=-0.2, q=-0.8)
 husimi(system,x,random_vectors) #hide
 nothing; #hide
 ```
-We may call [`husimi`](@ref Dicke.DickeBCE.husimi)`(system, x, random_vectors)`, which will
+We may call [`husimi`](@ref DickeModel.DickeBCE.husimi)`(system, x, random_vectors)`, which will
 return an array with `n` elements. The `i`th element is the result of evaluating the Husimi function 
 of the `i`th state (column) at the point `x`.
 ```@repl randstateHusimi
@@ -215,17 +216,17 @@ for most purposes (although you may increase it if you need more precision):
 That's fast!
 
 ## [Projected Wigner function of a cat state](@id wignerfuncexample)
-Using [`DickeBCE.WignerProjqp`](@ref Dicke.DickeBCE.WignerProjqp), we may compute
+Using [`DickeBCE.WignerProjqp`](@ref DickeModel.DickeBCE.WignerProjqp), we may compute
 the Wigner function of a state, projected onto the atomic plane.
 Note: the functions for computing Wigner functions are not thoroughly tested.
 They are based on these notes [Pilatowsky2019Notes](@cite)
 
 ```@example examples
-using Dicke.ClassicalDicke, Dicke.DickeBCE
+using DickeModel.ClassicalDicke, DickeModel.DickeBCE
 systemC = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
 systemQ = QuantumDickeSystem(systemC, j=10, Nmax=50) 
 res=0.05
-if !on_github res=0.2 end #end
+if !on_github res=0.2 end #hide
 Qs=Ps=-2:res:2
 pts=[[Q,P] for Q in Qs, P in Ps if Q^2+P^2 <= 4]
 

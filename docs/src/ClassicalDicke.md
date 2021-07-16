@@ -1,6 +1,6 @@
-# Dicke.ClassicalDicke
+# DickeModel.ClassicalDicke
 ```@meta
-CurrentModule = Dicke.ClassicalDicke
+CurrentModule = DickeModel.ClassicalDicke
 ```
 ```@docs 
 ClassicalDickeSystem
@@ -41,7 +41,7 @@ Point(::ClassicalDickeSystem)
 
 ```@setup diagram
 push!(LOAD_PATH,"../../src")
-using Dicke.ClassicalDicke
+using DickeModel.ClassicalDicke
 using Plots
 system=ClassicalDicke.ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
 Qs=-2:0.01:2

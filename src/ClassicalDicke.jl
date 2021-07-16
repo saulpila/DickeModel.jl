@@ -456,13 +456,13 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     # ```julia
     # function WignerHWxSU2_fixed_ϵ(system::ClassicalDickeSystem;Q,P,p,ϵ,j,signoq=+)
     # ```
-    # Returns an instance of [`TruncatedWignerApproximation.PhaseSpaceDistribution`](@ref) that samples points from the classical energy shell
+    # Returns an instance of [`TWA.PhaseSpaceDistribution`](@ref) that samples points from the classical energy shell
     # using a [Random Walk Metropolis-Hastings algorithm](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm) implemented in [Mamba](https://mambajl.readthedocs.io/en/latest/samplers/rwm.html?highlight=RWMVariate).
     # """
     #  function WignerHWxSU2_fixed_ϵ(system::ClassicalDickeSystem;Q,P,p,ϵ,j,signoq=+)
     #         Δ(Q,P)=discriminant_of_q_solution(system;Q=Q,P=P,p=p,ϵ=ϵ)
     #         x₀=Point(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signoq);
-    #         dst=TruncatedWignerApproximation.coherent_Wigner_HWxSU2(x₀,j);
+    #         dst=TWA.coherent_Wigner_HWxSU2(x₀,j);
     #         function probability_density(u)
     #             Q,q,P,p=u
     #             return dst.probability_density(Point(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signoq))/sqrt(Δ(Q,P))
@@ -486,7 +486,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     #         for i in 1:10000
     #             sample!(m) #bake
     #         end
-    #         TruncatedWignerApproximation.PhaseSpaceDistribution(probability_density,sample)
+    #         TWA.PhaseSpaceDistribution(probability_density,sample)
     #     end
 
         """
@@ -534,4 +534,3 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
          end
 
 end
-           

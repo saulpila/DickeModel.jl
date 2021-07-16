@@ -1,24 +1,19 @@
-module Dicke
+module DickeModel
   export ClassicalDicke
   export ClassicalSystems
   export DickeBCE
-  export UPOS
-  export TruncatedWignerApproximation
+  export UPOs
+  export TWA
   export FOTOCTWA
-  export DickeHusimiProjections
+  export EnergyShellProjections
   export ClassicalLMG
   export PhaseSpaces
       include("PhaseSpaces.jl")
       include("ClassicalSystems.jl")
-      include("TruncatedWignerApproximation.jl")
+      include("TWA.jl")
       include("ClassicalDicke.jl")
       include("DickeBCE.jl")
-      include("DickeHusimiProjections.jl")
+      include("EnergyShellProjections.jl")
       include("ClassicalLMG.jl")
-      include("UPOS.jl")
-
-
-
-
-
+      include("UPOs.jl")
 end

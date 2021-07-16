@@ -3,37 +3,38 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
-using Dicke
+using DickeModel
+on_github=false
 ```
 ## Classical evolution of coherent states
 
-The module [`Dicke.TruncatedWignerApproximation`](@ref Dicke.TruncatedWignerApproximation) is a very powerful tool to study the classical evolution
+The module [`DickeModel.TWA`](@ref DickeModel.TWA) is a very powerful tool to study the classical evolution
 of distributions in the phase space.
 
-Let us load the module `Dicke.TruncatedWignerApproximation`, together with [`Distributed`](https://docs.julialang.org/en/v1/stdlib/Distributed/) which allows parallelization.  
+Let us load the module `DickeModel.TWA`, together with [`Distributed`](https://docs.julialang.org/en/v1/stdlib/Distributed/) which allows parallelization.  
 ```@example examples
 using Distributed
 using Plots,Plots.PlotMeasures
-using Dicke.TruncatedWignerApproximation
-using Dicke.ClassicalDicke
+using DickeModel.TWA
+using DickeModel.ClassicalDicke
 if false #hide
 addprocs(2) #we add 2 workers. Add as many as there are cores in your computer.
-@everywhere using Dicke,Dicke.TruncatedWignerApproximation
+@everywhere using DickeModel,DickeModel.TWA
 end #hide
 ```
-The functions from [`Dicke.TruncatedWignerApproximation`](@ref Dicke.TruncatedWignerApproximation) will make use
+The functions from [`DickeModel.TWA`](@ref DickeModel.TWA) will make use
 of all the available workers.
 !!! warning 
     The line 
     ```julia 
-    @everywhere using Dicke
+    @everywhere using DickeModel
     ```
-    is necessary to load the module `Dicke` in all workers. You will get errors if you omit it.
+    is necessary to load the module `DickeModel` in all workers. You will get errors if you omit it.
     
 For our first example, let us consider the Wigner function of a coherent state,
 evolve it classically using the truncated Wigner approximation, and then look at 
 the expected value of the Weyl symbol of the observable ``\hat{j}_z=\hat{J}_z/j`` in time with 
-[`TruncatedWignerApproximation.average`](@ref). Note the usage of [`Weyl.Jz`](@ref Dicke.TruncatedWignerApproximation.Weyl.Jz).
+[`TWA.average`](@ref). Note the usage of [`Weyl.Jz`](@ref DickeModel.TWA.Weyl.Jz).
 
 ```@example examples
 system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
@@ -54,7 +55,7 @@ savefig("average_jz_TWA.svg");nothing #hide
 ![](average_jz_TWA.svg)
 
 Okay, but we can do more. Let's see how the whole distribution of ``{j}_z``
-evolves classically using [`TruncatedWignerApproximation.calculate_distribution`](@ref).
+evolves classically using [`TWA.calculate_distribution`](@ref).
 
 ```@example examples
 y_axis_values = -1.1:0.01:1.1
@@ -71,7 +72,7 @@ savefig("distribution_jz_TWA.svg");nothing #hide
 See [this](@ref TWAvsQuantum) example for a comparison between exact quantum evolution
 and TWA.
 
-We can chain several computations using [`TruncatedWignerApproximation.mcs_chain`](@ref). 
+We can chain several computations using [`TWA.mcs_chain`](@ref). 
 For example, let's see the evolution of ``q`` and ``p`` for the same coherent state evolving in time, along with the time-averaged
 distribution in the plane ``q,p``.
 ```@example examples
@@ -120,7 +121,7 @@ savefig("distribution_qptime_TWA.svg");nothing #hide
 ```
 ![](distribution_qptime_TWA.svg)
 
-The function [`calculate_distribution`](@ref TruncatedWignerApproximation.calculate_distribution) can even
+The function [`calculate_distribution`](@ref TWA.calculate_distribution) can even
 animate the evolution (with a little help from the wonderful [`@animate` from Plots](https://docs.juliaplots.org/latest/animations/)).
 ```@example examples
 N = 1000000
@@ -143,29 +144,29 @@ nothing; #hide
 ```
 ![](animation_of_evolution.mp4)
 !!! note
-    Computing animations with [`calculate_distribution(..., animate = true, ...)`](@ref TruncatedWignerApproximation.calculate_distribution)
+    Computing animations with [`calculate_distribution(..., animate = true, ...)`](@ref TWA.calculate_distribution)
     may need a lot of RAM. You can estimate the maximum amount of RAM needed using the shorthand formula  
     
     ``(\text{\# of workers}) \times (\text{length of }`` `xs` ``)\times (\text{length of }`` `ys` ``)\times (\text{length of }`` `ts` ``) \times (64 \text{ bits})``.
     
     But this number would only be reached if trajectories filled all of the matrices in all of the workers at all the timesteps. You may stay much
-    below this number by passing `maxNBatch` to [`calculate_distribution`](@ref TruncatedWignerApproximation.calculate_distribution) (or
-    to  [`monte_carlo_integrate`](@ref TruncatedWignerApproximation.monte_carlo_integrate)). This parameter limits the number of trajectories
+    below this number by passing `maxNBatch` to [`calculate_distribution`](@ref TWA.calculate_distribution) (or
+    to  [`monte_carlo_integrate`](@ref TWA.monte_carlo_integrate)). This parameter limits the number of trajectories
     that are calculated in batch in each  worker. Between batches, data is flushed to the main worker, which takes time, but liberates RAM. 
     If generating the animation is filling up your RAM, try to decrease `maxNBatch`.
     
 
 ## Fidelity out-of-time order correlator (FOTOC)
 
-The FOTOC is a quantum-equivalent of the classcal Lyapunov exponent. It is just
+The FOTOC is a quantum equivalent of the classcal Lyapunov exponent. It is just
 the variance ``\text{var}(Q)+\text{var}(q)+\text{var}(P)+\text{var}(p)`` as a function
 of time. It may be calculated using the TWA. 
 (See Ref. [Pilatowsky2020](@cite) and references therein).
 
 ```@example examples
-using Dicke.ClassicalDicke
-using Dicke.ClassicalSystems
-using Dicke.TruncatedWignerApproximation
+using DickeModel.ClassicalDicke
+using DickeModel.ClassicalSystems
+using DickeModel.TWA
 using Plots
 system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
 
@@ -196,9 +197,9 @@ and implemented in [`ClassicalDicke.energy_width_of_coherent_state`](@ref). Let'
 this formula against the semiclassical local density of states given by Eq. (E.3) of Ref. [Villasenor2020](@cite).
 
 ```@example examples
-using Dicke.ClassicalDicke
-using Dicke.ClassicalSystems
-using Dicke.TruncatedWignerApproximation
+using DickeModel.ClassicalDicke
+using DickeModel.ClassicalSystems
+using DickeModel.TWA
 using Distributions
 using Plots
 system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)

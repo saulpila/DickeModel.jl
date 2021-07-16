@@ -1,4 +1,4 @@
-module TruncatedWignerApproximation
+module TWA
     export calculate_distribution,average,variance,
     mcs_for_survival_probability,survival_probability,Weyl,mcs_chain,
     mcs_for_distributions,monte_carlo_integrate,MonteCarloSystem,coherent_Wigner_HWxSU2,coherent_Wigner_SU2,coherent_Wigner_HW
@@ -28,11 +28,11 @@ module TruncatedWignerApproximation
     ```julia
     struct MonteCarloSystem
     ```
-    This object may be passed to [`monte_carlo_integrate`](@ref TruncatedWignerApproximation.monte_carlo_integrate).
-    Use [`mcs_for_averaging`](@ref TruncatedWignerApproximation.mcs_for_averaging), 
-    [`mcs_for_variance`](@ref TruncatedWignerApproximation.mcs_for_variance), and
-    [`mcs_for_survival_probability`](@ref TruncatedWignerApproximation.mcs_for_survival_probability) to generate them, 
-    and [`mcs_chain`](@ref TruncatedWignerApproximation.mcs_chain) to join them together.
+    This object may be passed to [`monte_carlo_integrate`](@ref TWA.monte_carlo_integrate).
+    Use [`mcs_for_averaging`](@ref TWA.mcs_for_averaging), 
+    [`mcs_for_variance`](@ref TWA.mcs_for_variance), and
+    [`mcs_for_survival_probability`](@ref TWA.mcs_for_survival_probability) to generate them, 
+    and [`mcs_chain`](@ref TWA.mcs_chain) to join them together.
     """
     struct MonteCarloSystem
         f_initial
@@ -76,7 +76,7 @@ module TruncatedWignerApproximation
     For each trajectory and time in `ts`, an operation is performed, which is determined again by `mc_system`.
     A final operation is then performed and the result is returned. This may seem a bit abstract,
     but it is a very flexible system. The applications are more concrete; for example, if you
-    generate `mc_system` using [`mcs_for_averaging(... observable=f ...)`](@ref TruncatedWignerApproximation.mcs_for_averaging), 
+    generate `mc_system` using [`mcs_for_averaging(... observable=f ...)`](@ref TWA.mcs_for_averaging), 
     then the initial operation is to generate an array of zeroes the same length as `ts`. Then, for each initial condition
     `x`, the result of `f(x(t))` is added to each element of the array. Finally, the array is overall divided by `N` and then
     returned. This is exactly a Monte Carlo integration of the function `f(x)` over the classical evolution 
@@ -86,7 +86,7 @@ module TruncatedWignerApproximation
     
     # Arguments:
     - `system` should be an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
-    - `mc_system` should be an instance of  [`MonteCarloSystem`](@ref TruncatedWignerApproximation.MonteCarloSystem).
+    - `mc_system` should be an instance of  [`MonteCarloSystem`](@ref TWA.MonteCarloSystem).
     - `tolerate_errors` indicates that some errors in the integration may be ignored.
       This is useful because sometimes a one-in-a-million numerical instability may arise, and
       you may want to ignore it. If more than `100` errors occur consecutively, then then the
@@ -319,7 +319,7 @@ module TruncatedWignerApproximation
       if `system` were a instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref Main.ClassicalDicke.ClassicalDickeSystem), then `observable`
       could be `:(q+p^2 +Q)`, `f(Q, q, P, p) = q + p^2 - Q` or `f(x) = x[2] + x[4]^2 - x[1]`, which
       are all equivalent.
-      See also the submodule [`Weyl`](@ref Dicke.TruncatedWignerApproximation.Weyl), which produces expressions corresponding to 
+      See also the submodule [`Weyl`](@ref DickeModel.TWA.Weyl), which produces expressions corresponding to 
       the [Weyl symbols](https://en.wikipedia.org/wiki/Wigner%E2%80%93Weyl_transform#The_inverse_map) of quantum observables.  
       Note: `observable` can also be an array of observables, in which case an array is returned for each time.
     - `ts` should be a sorted array of times.
@@ -591,8 +591,8 @@ module TruncatedWignerApproximation
         end
         tam=length(observable)
 
-        apromediar=[observable;[(x)->f(x...)^2 for f in TruncatedWignerApproximation.function_from_expression.((system,),observable)]]
-        mcsa=TruncatedWignerApproximation.mcs_for_averaging(system,observable=apromediar,ts=ts,N=N,distribution=distribution)
+        apromediar=[observable;[(x)->f(x...)^2 for f in TWA.function_from_expression.((system,),observable)]]
+        mcsa=TWA.mcs_for_averaging(system,observable=apromediar,ts=ts,N=N,distribution=distribution)
         mf_final=function(res)
             r=mcsa.f_final(res)
             vars=[[re[i+tam] - re[i]^2 for i in 1:tam] for re in r]
@@ -620,7 +620,7 @@ module TruncatedWignerApproximation
     Calls [`mcs_for_variance`](@ref) and then [`monte_carlo_integrate`](@ref) on the resulting `MonteCarloSystem`. Extra `kargs` are sent to the latter.
     """
     function variance(system::ClassicalSystems.ClassicalSystem;observable,N::Integer,ts::AbstractArray{<:Real}=[0.0],distribution::PhaseSpaceDistribution,return_average=false,kargs...)
-        return TruncatedWignerApproximation.monte_carlo_integrate(system,
+        return TWA.monte_carlo_integrate(system,
             mcs_for_variance(system;observable=observable,ts=ts,N=N,distribution=distribution,return_average = return_average);kargs...)
     end
     """
@@ -666,7 +666,7 @@ module TruncatedWignerApproximation
     Calls [`mcs_for_survival_probability`](@ref) and then [`monte_carlo_integrate`](@ref) on the resulting `MonteCarloSystem`. Extra `kargs` are sent to the latter.
     """
     function survival_probability(system::ClassicalSystems.ClassicalSystem;distribution::PhaseSpaceDistribution,N::Integer,ts::AbstractArray{<:Real},kargs...)
-        return TruncatedWignerApproximation.monte_carlo_integrate(system,
+        return TWA.monte_carlo_integrate(system,
             mcs_for_survival_probability(system;ts=ts,N=N,distribution=distribution);integate_backwards=true,kargs...)
     end
     """
@@ -691,9 +691,9 @@ module TruncatedWignerApproximation
     end
     """
     ```julia
-    function coherent_Wigner_HW(;Q₀::Real,P₀::Real,j::Real=1,ħ::Real=1/j)
+    function coherent_Wigner_SU2(;Q₀::Real,P₀::Real,j::Real=1,ħ::Real=1/j)
     ```
-    Same as [`coherent_Wigner_HW`](@ref), but for a coherent state for the SU(2) 
+    Similar to [`coherent_Wigner_HW`](@ref), but for a coherent state for the SU(2) 
     algebra (a Bloch coherent state).  The approximation given by Eq. (B.4) of Ref. [Villasenor2020](@cite) is used.
     """
     function coherent_Wigner_SU2(;Q₀::Real,P₀::Real,j::Real=1,ħ::Real=1/j)
@@ -736,7 +736,9 @@ module TruncatedWignerApproximation
     end
     """
     ```julia
-    function coherent_Wigner_HWxSU2(;Q₀::Real,q₀::Real,P₀::Real,p₀::Real,j::Real=1,ħ::Real=1/j)
+    function coherent_Wigner_HWxSU2(;Q₀::Real, q₀::Real,
+                                    P₀::Real, p₀::Real,
+                                    j::Real=1, ħ::Real=1/j)
     ```
     Produces the Wigner function corresponding to the tensor product of [`coherent_Wigner_HW`](@ref) and [`coherent_Wigner_SU2`](@ref).
     """
@@ -753,25 +755,25 @@ module TruncatedWignerApproximation
     end
     """
     ```julia
-    function  coherent_Wigner_HWxSU2(u₀::AbstractVector{<:Real},j::Real=1,ħ::Real=1/j)
+    function coherent_Wigner_HWxSU2(u₀::AbstractVector{<:Real},j::Real=1,ħ::Real=1/j)
     ```
-    Same as [`coherent_Wigner_HWxSU2`](@ref coherent_Wigner_HWxSU2()), taking `u₀ = [Q₀, q₀, P₀, p₀]`.
+    Returns  `coherent_Wigner_HWxSU2(Q₀=u₀[1], q₀=u₀[2], P₀=u₀[3], p₀=u₀[4], j=j, ħ=ħ)`.
     """
     coherent_Wigner_HWxSU2(u₀::AbstractVector{<:Real};j::Real=1,ħ::Real=1/j)=coherent_Wigner_HWxSU2(Q₀=u₀[1],q₀=u₀[2],P₀=u₀[3],p₀=u₀[4],j=j,ħ=ħ)
     
     """
     ```julia
-    function  coherent_Wigner_SU2(u₀::AbstractVector{<:Real},j::Real=1,ħ::Real=1/j)
+    function coherent_Wigner_SU2(u₀::AbstractVector{<:Real},j::Real=1,ħ::Real=1/j)
     ```
-    Same as [`coherent_Wigner_SU2`](@ref coherent_Wigner_SU2()), taking `u₀ = [Q₀, P₀]`.
+    Returns `coherent_Wigner_SU2(Q₀=u₀[1], P₀=u₀[2], j=j, ħ=ħ)`.
     """
     coherent_Wigner_SU2(u₀;j::Real=1,ħ::Real=1/j)=coherent_Wigner_SU2(Q₀=u₀[1],P₀=u₀[2],j=j,ħ=ħ)
     
     """
     ```julia
-    function  coherent_Wigner_HW(u₀::AbstractVector{<:Real},j::Real=1,ħ::Real=1/j)
+    function coherent_Wigner_HW(u₀::AbstractVector{<:Real},j::Real=1,ħ::Real=1/j)
     ```
-    Same as [`coherent_Wigner_HW`](@ref coherent_Wigner_HW()), taking `u₀ = [q₀, p₀]`.
+    Returns `coherent_Wigner_HW(;q₀=u₀[1], p₀=u₀[2], j=j, ħ=ħ).
     """    
     coherent_Wigner_HW(u₀;j::Real=1,ħ::Real=1/j)=coherent_Wigner_HW(q₀=u₀[1],p₀=u₀[2],j=j,ħ=ħ)
     

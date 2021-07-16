@@ -1,6 +1,10 @@
 push!(LOAD_PATH,"../src/")
-using Dicke
+using DickeModel
 using Documenter,Bibliography
+using Distributed
+addprocs(2)
+@everywhere push!(LOAD_PATH,"../src/")
+@everywhere using DickeModel
 #bib = CitationBibliography(Base.Filesystem.joinpath(@__DIR__,"refs.bib"))
 include("citations.jl")
 
@@ -14,20 +18,20 @@ makedocs(bib,
                prettyurls = get(ENV, "CI", nothing) == "true",
                assets = ["assets/customcss.css"]
            ),
-         sitename = "Dicke.jl",
-         modules  = [Dicke.ClassicalDicke, Dicke.ClassicalSystems,  
-                    Dicke.DickeBCE,  Dicke.UPOS,  Dicke.ClassicalLMG,  Dicke.PhaseSpaces,  
-                    Dicke.TruncatedWignerApproximation.Weyl,
-                    Dicke.TruncatedWignerApproximation, Dicke.DickeHusimiProjections],
+         sitename = "DickeModel.jl",
+         modules  = [DickeModel.ClassicalDicke, DickeModel.ClassicalSystems,  
+                    DickeModel.DickeBCE,  DickeModel.UPOs,  DickeModel.ClassicalLMG,  DickeModel.PhaseSpaces,  
+                    DickeModel.TWA.Weyl,
+                    DickeModel.TWA, DickeModel.EnergyShellProjections],
          pages=[
-                "The Dicke.jl package" => "index.md",
+                "The DickeModel.jl package" => "index.md",
 
                 "Documentation" => [
                     "ClassicalDicke" => "ClassicalDicke.md",
                     "DickeBCE" => "DickeBCE.md",
-                    "UPOS" => "UPOS.md",
-                    "TruncatedWignerApproximation" => "TruncatedWignerApproximation.md",
-                    "DickeHusimiProjections" => "DickeHusimiProjections.md",
+                    "UPOs" => "UPOs.md",
+                    "TWA" => "TWA.md",
+                    "EnergyShellProjections" => "EnergyShellProjections.md",
                     "ClassicalLMG" => "ClassicalLMG.md",
                     "ClassicalSystems" => "ClassicalSystems.md",
                     "PhaseSpaces" => "PhaseSpaces.md"
@@ -35,10 +39,10 @@ makedocs(bib,
                 "Examples" => [
                     "ClassicalDicke" => "ClassicalDickeExamples.md",
                     "DickeBCE (Quantum Dicke)" => "DickeBCEExamples.md",
-                    "DickeHusimiProjections" => "DickeHusimiProjectionsExamples.md",
-                    "TruncatedWignerApproximation" => "TruncatedWignerApproximationExamples.md",
+                    "EnergyShellProjections" => "EnergyShellProjectionsExamples.md",
+                    "TWA" => "TWAExamples.md",
                     "ClassicalLMG" => "ClassicalLMGExamples.md",
-                     "UPOS" => "UPOSExamples.md",
+                     "UPOs" => "UPOsExamples.md",
                 ],
                 "References" => "references.md"
                ])
@@ -47,5 +51,5 @@ makedocs(bib,
 
 
 deploydocs(;
-    repo="github.com/saulpila/Dicke.jl",
+    repo="github.com/saulpila/DickeModel.jl",
 )

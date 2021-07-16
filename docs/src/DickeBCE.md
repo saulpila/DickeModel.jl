@@ -1,6 +1,6 @@
-# Dicke.DickeBCE
+# DickeModel.DickeBCE
 ```@meta
-CurrentModule = Dicke.DickeBCE
+CurrentModule = DickeModel.DickeBCE
 ```
 ```@docs
 QuantumDickeSystem

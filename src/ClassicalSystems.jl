@@ -171,5 +171,4 @@ This function integrates initial condition `u₀` from `t₀` to `t` under the H
         return lyapunov_spectrum(v...)
      end
 end
-
  

@@ -126,4 +126,3 @@ export Q_of_θφ,Q_of_θϕ,P_of_θφ,P_of_θϕ,θ_of_QP,φ_of_QP,ϕ_of_QP,jz,jx,
     """
     arc_between_QP(Q1::Real,P1::Real,Q2::Real,P2::Real)=arc_between_θϕ(θ_of_QP(Q1,P1),ϕ_of_QP(Q1,P1),θ_of_QP(Q2,P2),ϕ_of_QP(Q2,P2))
 end
-

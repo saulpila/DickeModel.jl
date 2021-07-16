@@ -1,6 +1,6 @@
-using Dicke
+using DickeModel
 using Test
 
-@testset "Dicke.jl" begin
+@testset "DickeModel.jl" begin
     # Write your tests here.
 end
