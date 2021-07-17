@@ -7,17 +7,17 @@ using Distributed
 using Plots
 j = 30
 Nmax = 120
-systemQ = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j=j, Nmax=Nmax)
-eigenenergies,eigenstates = diagonalization(systemQ)
+system = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j=j, Nmax=Nmax)
+eigenenergies,eigenstates = diagonalization(system)
 ϵs=eigenenergies/j
 addprocs(2) #we add 2 workers. Add as many as there are cores in your computer.
-@everywhere using DickeModel</code></pre><p>The function <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>EnergyShellProjections.proj_husimi_QP_matrix</code></a> will make use of all the available workers (you may disable this by passing <code>parallelize = true</code>)</p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>The line </p><pre><code class="language-julia">@everywhere using DickeModel</code></pre><p>is necessary to load the module <code>DickeModel</code> in all workers. You will get errors if you omit it.</p></div></div><p>Let us first consider the projection</p><p class="math-container">\[    \iint \text{d} q\text{d} p \,\delta(h_\text{cl}(Q,q,P,p)-\epsilon_k)\, \mathcal{Q}_{k}(Q,q,P,p)\]</p><p>of the Husimi function <span>$\mathcal{Q}_{k}(\mathbf{x}) = \left | \left \langle \mathbf{x} \middle | E_k \right \rangle \right |^2$</span> of an eigenstate <span>$\left | E_k \right \rangle$</span> into the atomic plane intersected with the energy shell at <span>$\epsilon_k=E_k/j$</span> (see Ref. <a href="../references/#Pilatowsky2021NatCommun">[13]</a>).</p><p>This can be easily plotted using  <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>EnergyShellProjections.proj_husimi_QP_matrix</code></a>:</p><pre><code class="language-julia">k = 600
+@everywhere using DickeModel</code></pre><p>The function <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>EnergyShellProjections.proj_husimi_QP_matrix</code></a> will make use of all the available workers (you may disable this by passing <code>parallelize = true</code>)</p><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>The line </p><pre><code class="language-julia">@everywhere using DickeModel</code></pre><p>is necessary to load the module <code>DickeModel</code> in all workers. You will get errors if you omit it.</p></div></div><p>Let us first consider the projection</p><p class="math-container">\[    \iint \text{d} q\text{d} p \,\delta(h_\text{cl}(Q,q,P,p)-\epsilon_k)\, \mathcal{Q}_{k}(Q,q,P,p)\]</p><p>of the Husimi function <span>$\mathcal{Q}_{k}(\mathbf{x}) = \left | \left \langle \mathbf{x} \middle | E_k \right \rangle \right |^2$</span> of an eigenstate <span>$\left | E_k \right \rangle$</span> into the atomic plane intersected with the energy shell at <span>$\epsilon_k=E_k/j$</span> (see Ref. <a href="../references/#Pilatowsky2021NatCommun">[14]</a>).</p><p>This can be easily plotted using  <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>EnergyShellProjections.proj_husimi_QP_matrix</code></a>:</p><pre><code class="language-julia">k = 600
 state = eigenstates[:,k]
 ϵₖ = ϵs[k]
 res = 0.02
     res = 0.5 #hide
 heatmap(
-    EnergyShellProjections.proj_husimi_QP_matrix(systemQ,
+    EnergyShellProjections.proj_husimi_QP_matrix(system,
         state,
         ϵ = ϵₖ,
         symmetricQP = true,
@@ -27,7 +27,9 @@ heatmap(
 state = eigenstates[:,k]
 ϵₖ = ϵs[k]
 powers = [0.5,1,2,3,4]
-Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(systemQ,
+res = 0.04
+    res = 0.5 #hide
+Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(system,
     state,
     ϵ = ϵₖ,
     matrix_powers = powers,
@@ -58,19 +60,19 @@ plot(
 ϵ = 1
 res = 0.02
     res = 0.5 #hide
-coherents = hcat([Point(systemQ.classical_system,Q=Q,P=P,p=0,ϵ=ϵ) for (Q,P) in 💗.(ts)]...)
-heatmap(EnergyShellProjections.proj_husimi_QP_matrix(systemQ,coherents;
+coherents = hcat([Point(system.classical_system,Q=Q,P=P,p=0,ϵ=ϵ) for (Q,P) in 💗.(ts)]...)
+heatmap(EnergyShellProjections.proj_husimi_QP_matrix(system,coherents;
     mix_states = true,
     ϵ = ϵ,
     res = res),
     size = (600,600),
     color= :RdPu_9)</code></pre><p><img src="../heartofcoherents.svg" alt/></p><p>Nota that above, we passed <code>mix_states = true</code> to <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>proj_husimi_QP_matrix</code></a>. This tells the code to average together all of the Husimis of the states (using <a href="https://docs.julialang.org/en/v1/stdlib/Statistics/#Statistics.mean"><code>Statistics.mean</code></a>). You may even pass a  more complicated <code>mix_function</code> to add weights (see the documentation of <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>proj_husimi_QP_matrix</code></a> for details). If we had set <code>mix_states = false</code> (default), we would have obtained a matrix for each state. </p><p>The fact that <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>proj_husimi_QP_matrix</code></a> may return the projection of multiple  states at the same time allows to create really nice animations. We evolve the state using <a href="../DickeBCE/#DickeModel.DickeBCE.evolve"><code>DickeBCE.evolve</code></a>.</p><pre><code class="language-julia">ϵ = -0.5
-x = Point(systemQ.classical_system, Q=1, P=1, p=0, ϵ=ϵ)
-coherent_x = coherent_state(systemQ,x)
-ts = 0:0.05:20
-res = 0.05
+x = Point(system.classical_system, Q=1, P=1, p=0, ϵ=ϵ)
+coherent_x = coherent_state(system,x)
+ts = 0:0.1:20
+res = 0.1
 evolution = evolve(ts,coherent_x,eigenstates=eigenstates,eigenenergies=eigenenergies)
-Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(systemQ,
+Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(system,
     evolution,
     res = res,
     ϵ = ϵ)
@@ -83,7 +85,7 @@ end
 
 mp4(animation,
     &quot;animation_of_evolution_Husimi.mp4&quot;,
-    fps=30)</code></pre><p><video src="../animation_of_evolution_Husimi.mp4" controls="true" title><a href="../animation_of_evolution_Husimi.mp4"></a></video></p><h2 id="Rényi-occupation-of-random-states"><a class="docs-heading-anchor" href="#Rényi-occupation-of-random-states">Rényi occupation of random states</a><a id="Rényi-occupation-of-random-states-1"></a><a class="docs-heading-anchor-permalink" href="#Rényi-occupation-of-random-states" title="Permalink"></a></h2><p>In this example, we construct a set of random states from the Gaussian Orthogonal Ensemble (GOE) of Random Matrix Theory in the positive parity sector of the Dicke model  using the function <a href="../DickeBCE/#DickeModel.DickeBCE.random_state"><code>DickeBCE.random_state</code></a>. Then we study average Rényi  Occupation (see Ref. <a href="../references/#Villasenor2021">[18]</a>) using <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.rényi_occupation"><code>EnergyShellProjections.rényi_occupation</code></a>.</p><pre><code class="language-julia">using DickeModel
+    fps=15)</code></pre><p><video src="../animation_of_evolution_Husimi.mp4" controls="true" title><a href="../animation_of_evolution_Husimi.mp4"></a></video></p><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>If you want better resolution, you may decrease <code>res</code> above. Computation time grows as the inverse cube of <code>res</code>. So twice the resolution will increase the computation time eightfold.</p></div></div><h2 id="Rényi-occupation-of-random-states"><a class="docs-heading-anchor" href="#Rényi-occupation-of-random-states">Rényi occupation of random states</a><a id="Rényi-occupation-of-random-states-1"></a><a class="docs-heading-anchor-permalink" href="#Rényi-occupation-of-random-states" title="Permalink"></a></h2><p>In this example, we construct a set of random states from the Gaussian Orthogonal Ensemble (GOE) of Random Matrix Theory in the positive parity sector of the Dicke model  using the function <a href="../DickeBCE/#DickeModel.DickeBCE.random_state"><code>DickeBCE.random_state</code></a>. Then we study average Rényi  Occupation (see Ref. <a href="../references/#Villasenor2021">[19]</a>) using <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.rényi_occupation"><code>EnergyShellProjections.rényi_occupation</code></a>.</p><pre><code class="language-julia">using DickeModel
 using DickeModel.DickeBCE
 using DickeModel.ClassicalDicke
 using DickeModel.EnergyShellProjections
@@ -122,4 +124,4 @@ plot(αs,av_𝔏αs,
     key = false,
     ylabel = &quot;⟨𝔏α⟩&quot;,
     xlabel = &quot;α&quot;,
-    guidefont = &quot;times&quot;)</code></pre><p><img src="../randomStatesL.svg" alt/></p><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>If you plan to compute both  <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.rényi_occupation"><code>EnergyShellProjections.rényi_occupation</code></a> and <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>EnergyShellProjections.proj_husimi_QP_matrix</code></a>, you should use the  combined call  <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.rényi_occupation_and_proj_husimi_QP_matrix"><code>EnergyShellProjections.rényi_occupation_and_proj_husimi_QP_matrix</code></a>, which computes them both in the same routine and is faster than calling them separately.</p></div></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../DickeBCEExamples/">« DickeBCE (Quantum Dicke)</a><a class="docs-footer-nextpage" href="../TWAExamples/">TWA »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Friday 16 July 2021 16:44">Friday 16 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    guidefont = &quot;times&quot;)</code></pre><p><img src="../randomStatesL.svg" alt/></p><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>If you plan to compute both  <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.rényi_occupation"><code>EnergyShellProjections.rényi_occupation</code></a> and <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.proj_husimi_QP_matrix"><code>EnergyShellProjections.proj_husimi_QP_matrix</code></a>, you should use the  combined call  <a href="../EnergyShellProjections/#DickeModel.EnergyShellProjections.rényi_occupation_and_proj_husimi_QP_matrix"><code>EnergyShellProjections.rényi_occupation_and_proj_husimi_QP_matrix</code></a>, which computes them both in the same routine and is faster than calling them separately.</p></div></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../DickeBCEExamples/">« DickeBCE (Quantum Dicke)</a><a class="docs-footer-nextpage" href="../TWAExamples/">TWA »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Saturday 17 July 2021 01:55">Saturday 17 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

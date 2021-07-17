@@ -11,7 +11,7 @@ using Plots
 system = ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
 ν(ϵ) = density_of_states(system, j=100, ϵ=ϵ)
 ϵgs = minimum_energy(system)
-plot(ν, ϵgs:0.01:2, xlabel=&quot;ϵ&quot;, ylabel=&quot;Density of States&quot;)</code></pre><p><img src="../density_of_states.svg" alt/></p><p>This is precisely the red line in Fig. A1. of Ref. <a href="../references/#Villasenor2020">[17]</a>.</p><h2 id="Drawing-a-Poincaré-surface"><a class="docs-heading-anchor" href="#Drawing-a-Poincaré-surface">Drawing a Poincaré surface</a><a id="Drawing-a-Poincaré-surface-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Poincaré-surface" title="Permalink"></a></h2><p>Here is a way to draw a <a href="https://en.wikipedia.org/wiki/Poincar%C3%A9_map">Poincaré surface</a> for the Dicke model. We use <a href="../ClassicalSystems/#DickeModel.ClassicalSystems.integrate"><code>ClassicalSystems.integrate</code></a> to integrate a bunch of initial conditions. Using the <a href="https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback">callback system of DifferentialEquations</a>, we save the points where <span>$p=0$</span>.</p><pre><code class="language-julia">using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
+plot(ν, ϵgs:0.01:2, xlabel=&quot;ϵ&quot;, ylabel=&quot;Density of States&quot;)</code></pre><p><img src="../density_of_states.svg" alt/></p><p>This is precisely the red line in Fig. A1. of Ref. <a href="../references/#Villasenor2020">[18]</a>.</p><h2 id="Drawing-a-Poincaré-surface"><a class="docs-heading-anchor" href="#Drawing-a-Poincaré-surface">Drawing a Poincaré surface</a><a id="Drawing-a-Poincaré-surface-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Poincaré-surface" title="Permalink"></a></h2><p>Here is a way to draw a <a href="https://en.wikipedia.org/wiki/Poincar%C3%A9_map">Poincaré surface</a> for the Dicke model. We use <a href="../ClassicalSystems/#DickeModel.ClassicalSystems.integrate"><code>ClassicalSystems.integrate</code></a> to integrate a bunch of initial conditions. Using the <a href="https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback">callback system of DifferentialEquations</a>, we save the points where <span>$p=0$</span>.</p><pre><code class="language-julia">using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
 using Plots
 using DiffEqBase
 
@@ -48,9 +48,8 @@ using DiffEqBase
 
 system = ClassicalDickeSystem(ω=0.8, γ=0.8, ω₀=1)
 ϵ = -1.35
-
-n_points = 100 #making this greater will make a smoother plot,
-                  #but it may take time!
+n_points = 50 #making this greater will make a smoother plot,
+              #but it may take time!
 
 maxQ = maximum_Q_for_ϵ(system,ϵ)
 minQ = minimum_nonnegative_Q_for_ϵ(system,ϵ)
@@ -59,24 +58,28 @@ Qs = range(minQ, maxQ, length = n_points)
 Ps = range(0, maxP, length = n_points)  #we only compute the top half of
                           #the plane, and later mirror it
 
-#this matrix contains NaNs (outside of bounds) and tuples [λ,n]
-#(inside of bounds), where λ is an average of all the Lyapunov
-#exponents of the n trajectories that have passed through that square
-matrix = [if minimum_ϵ_for(system, P=P, p=0, Q=Q) &gt; ϵ
-            NaN else [0.0,0] end
+#this matrix will contain the average Lyapunov exponents of the n trajectories
+#that have passed through that square  or NaN if the point is outside of bounds
+#we make it shared so all workers can use it
+mat_av_lya = [if minimum_ϵ_for(system, P=P, p=0, Q=Q) &gt; ϵ
+            NaN else 0.0 end
                 for Q in Qs, P in Ps]
 
+#this matrix will contain the count of how many trajectories
+#have passed through that square.
+mat_counts =zeros(Int,length(Qs),length(Ps))
 pts = Tuple{Float64, Float64}[] #a list of points (Q,P) for temporary storage
 
 function save(state) #this function saves (Q,P) to pts if q = q₊ (and not q₋).
-    if q_sign(system,state.u,ϵ) == +
+    if ClassicalDicke.q_sign(system,state.u,ϵ) == +
         Q,q,P,p = state.u
         push!(pts, (Q,P))
     end
 end
-callback=ContinuousCallback((x, t, _) -&gt; x[4], #when p=x[4] is 0,
-    save; #execute the function save
-    save_positions=(false,false), abstol=1e-3)
+callback = ContinuousCallback((x, t, _) -&gt; x[4], #when p=x[4] is 0,
+            save; #execute the function save
+            save_positions=(false,false), abstol=1e-3)
+
 #an auxiliary function, which gives the index k so that r[k] ≥ v &gt;r[k]
 function index_of_subinterval(v,r)
     if r[end] &lt;v
@@ -87,10 +90,11 @@ function index_of_subinterval(v,r)
     end
     return Int(round(((v-r[1])/(r[end]-r[1]))*(length(r)-1) +1))
 end
+
 #we iterate over the matrix and the values of Q,P
-for ((Q,P),element) in zip(Iterators.product(Qs,Ps),matrix)
+for ((Q,P),av_lyapunov,count) in zip(Iterators.product(Qs,Ps),mat_av_lya,mat_counts)
     #if we are out of bounds or we have information on this Lyapunov exponent,
-    if element===NaN || element[2] &gt; 0
+    if av_lyapunov===NaN || count &gt; 0
         continue #we skip
     end
 
@@ -98,29 +102,31 @@ for ((Q,P),element) in zip(Iterators.product(Qs,Ps),matrix)
     #Poincaré map that the trajectory starting at (Q,P) passes through.
     empty!(pts)
     push!(pts,(Q,P))
-    point  = Point(system, Q=Q, P=P, p=0, ϵ=ϵ)
-    λ = lyapunov_exponent(system,
-        t = 5000,
-        u₀ = point,
-        callback = callback)
+    point  = ClassicalDicke.Point(system, Q=Q, P=P, p=0, ϵ=ϵ)
 
+    λ = ClassicalSystems.lyapunov_exponent(system, point,
+        #decreasing these numbers will produce more precise results but takes more time.
+        tol = 1e-8,
+        λtol = 0.00005,
+        callback = callback)
 
     for (mQ,mP) in pts
         #we save the Lyapunov into all of the squares that the trajectory visited.
-        el = matrix[index_of_subinterval(mQ,Qs),index_of_subinterval(abs(mP),Ps)]
+        iQ,iP = index_of_subinterval(mQ,Qs),index_of_subinterval(abs(mP),Ps)
         #if we are inside bounds
-        if el !== NaN
-
-            el[1] = (el[1]*el[2] + λ)/(el[2] + 1)  #we update the average
-            el[2] += 1 #we update the count
+        if mat_av_lya[iQ,iP] !== NaN
+            #we update the average
+            mat_av_lya[iQ,iP] = (mat_av_lya[iQ,iP]*mat_counts[iQ,iP] + λ)/(mat_counts[iQ,iP] + 1)
+            mat_counts[iQ,iP] += 1 #we update the count
         end
     end
 end
 
-mat=transpose([v[1] for v in matrix]) #we take the average Lyapunovs, and transpose
-#because heatmap takes transposed matrices.
-
+mat=transpose(mat_av_lya) #we transpose because heatmap takes transposed matrices.
 mat=vcat(mat[end:-1:2,1:end], mat) #mirror in P
 Ps=vcat(-Ps[end:-1:2], Ps) #update Ps with negative values
 
-heatmap(Qs, Ps, mat, xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;, size=(550,500))</code></pre><p><img src="../lyapunov_map.svg" alt/></p><p>It looks very similar to the Poincaré map of the previous example! Notice how there are regular (black) and chaotic (colored) regions.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../PhaseSpaces/">« PhaseSpaces</a><a class="docs-footer-nextpage" href="../DickeBCEExamples/">DickeBCE (Quantum Dicke) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Friday 16 July 2021 16:44">Friday 16 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+heatmap(Qs, Ps, mat,
+        xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;,
+        clim=(0.01,NaN), #Lyapunovs below 0.005 we take as 0
+        size=(550,500))</code></pre><p><img src="../lyapunov_map.svg" alt/></p><p>It looks very similar to the Poincaré map of the previous example! Notice how there are regular (black) and chaotic (colored) regions.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../PhaseSpaces/">« PhaseSpaces</a><a class="docs-footer-nextpage" href="../DickeBCEExamples/">DickeBCE (Quantum Dicke) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Saturday 17 July 2021 01:55">Saturday 17 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
