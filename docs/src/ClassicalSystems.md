@@ -11,6 +11,6 @@ integrate
 ```
 ## Lyapunov exponents
 ```@docs
-lyapunov_exponent
 lyapunov_spectrum
+lyapunov_exponent
 ```

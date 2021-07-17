@@ -5,7 +5,6 @@ on_github=get(ENV, "CI", nothing) == "true"
 cache_fold_name="./diags"
 use_current_dir_for_diags=on_github
 using DickeModel
-on_github=false
 ```
 The module [`DickeModel.EnergyShellProjections`](@ref DickeModel.EnergyShellProjections) allows to integrate functions
 in the classical energy shells of the Dicke model, and has specialized functions for projections of the
@@ -24,14 +23,14 @@ using Distributed
 using Plots
 j = 30
 Nmax = 120
-systemQ = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j=j, Nmax=Nmax)
+system = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j=j, Nmax=Nmax)
 if false #hide
-eigenenergies,eigenstates = diagonalization(systemQ) 
+eigenenergies,eigenstates = diagonalization(system) 
 end #hide
 if !use_current_dir_for_diags #hide
-eigenenergies,eigenstates =  diagonalization(systemQ,verbose=false) #hide
+eigenenergies,eigenstates =  diagonalization(system,verbose=false) #hide
 else #hide
-eigenenergies,eigenstates =  diagonalization(systemQ, cache_folder=cache_fold_name,verbose=false)  #hide
+eigenenergies,eigenstates =  diagonalization(system, cache_folder=cache_fold_name,verbose=false)  #hide
 end #hide
 ϵs=eigenenergies/j
 if false #hide
@@ -67,7 +66,7 @@ if !on_github #hide
     res = 0.5 #hide 
 end #hide
 heatmap(
-    EnergyShellProjections.proj_husimi_QP_matrix(systemQ,
+    EnergyShellProjections.proj_husimi_QP_matrix(system,
         state,
         ϵ = ϵₖ,
         symmetricQP = true,
@@ -89,7 +88,11 @@ k = 750
 state = eigenstates[:,k]  
 ϵₖ = ϵs[k]
 powers = [0.5,1,2,3,4] 
-Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(systemQ,
+res = 0.04
+if !on_github #hide
+    res = 0.5 #hide 
+end #hide
+Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(system,
     state,
     ϵ = ϵₖ,
     show_progress = false, #hide
@@ -133,8 +136,8 @@ res = 0.02
 if !on_github #hide
     res = 0.5 #hide 
 end #hide
-coherents = hcat([Point(systemQ.classical_system,Q=Q,P=P,p=0,ϵ=ϵ) for (Q,P) in 💗.(ts)]...)
-heatmap(EnergyShellProjections.proj_husimi_QP_matrix(systemQ,coherents;
+coherents = hcat([Point(system.classical_system,Q=Q,P=P,p=0,ϵ=ϵ) for (Q,P) in 💗.(ts)]...)
+heatmap(EnergyShellProjections.proj_husimi_QP_matrix(system,coherents;
     mix_states = true,
     ϵ = ϵ,
     show_progress = false, #hide
@@ -154,16 +157,16 @@ The fact that [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.p
 states at the same time allows to create really nice animations. We evolve the state using [`DickeBCE.evolve`](@ref DickeModel.DickeBCE.evolve).
 ```@example examples
 ϵ = -0.5
-x = Point(systemQ.classical_system, Q=1, P=1, p=0, ϵ=ϵ)
-coherent_x = coherent_state(systemQ,x)
-ts = 0:0.05:20
-res = 0.05
+x = Point(system.classical_system, Q=1, P=1, p=0, ϵ=ϵ)
+coherent_x = coherent_state(system,x)
+ts = 0:0.1:20
+res = 0.1
 if !on_github #hide
     ts = 0:2 #hide
     res= 0.5 #hide
 end #hide
 evolution = evolve(ts,coherent_x,eigenstates=eigenstates,eigenenergies=eigenenergies)
-Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(systemQ,
+Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(system,
     evolution,
     show_progress = false, #hide
     res = res,
@@ -178,10 +181,16 @@ end
 mp4(animation,
     "animation_of_evolution_Husimi.mp4",
     show_msg=false, #hide
-    fps=30)
+    fps=15)
 nothing; #hide
 ```
 ![](animation_of_evolution_Husimi.mp4)
+
+!!! tip
+    If you want better resolution, you may decrease `res` above. Computation time grows
+    as the inverse cube of `res`. So twice the resolution will increase the computation time
+    eightfold.
+
 
 ## Rényi occupation of random states
 In this example, we construct a set of random states from the Gaussian Orthogonal

@@ -6,7 +6,6 @@ on_github=get(ENV, "CI", nothing) == "true"
 cache_fold_name="./diags"
 use_current_dir_for_diags=on_github
 using DickeModel
-on_github=false
 ```
 The module [`DickeModel.DickeBCE`](@ref DickeModel.DickeBCE) works with the quantum Dicke model
 using a very efficient basis known as the coherent efficient basis (BCE for its acronym in Spanish).
@@ -120,12 +119,14 @@ N=20000
 if !on_github N=1000 end #hide
 TWAJz2 = TWA.average(systemC,
                  distribution = W,
+                 show_progress=false, #hide
                  observable = Weyl.Jz²(j), 
                  ts = ts,
                  N = N)
 
 plot(ts, [exvals TWAJz2], 
     size=(700,350), label=["Quantum" "TWA"],
+    left_margin=2Plots.mm,
     xlabel = "time", ylabel="Jz²")
 savefig("Jz2_QvsTWA.svg");nothing #hide
 ```
@@ -135,11 +136,12 @@ Now let us take a look at the survival probability (see Ref. [Villasenor2020](@c
 ```@example examples
 ts=exp10.(-2:0.01:3)
 
-N=20000
+N=20000 # Higher values reduce numerical noise at the cost of speed
 if !on_github N=1000 end #hide
 classical_SP = TWA.survival_probability(
     systemC; 
     distribution = W,
+    show_progress=false, #hide
     N=N, ts=ts
 )
 quantum_SP = DickeBCE.survival_probability(
@@ -225,7 +227,7 @@ They are based on these notes [Pilatowsky2019Notes](@cite)
 using DickeModel.ClassicalDicke, DickeModel.DickeBCE
 systemC = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
 systemQ = QuantumDickeSystem(systemC, j=10, Nmax=50) 
-res=0.05
+res=0.025
 if !on_github res=0.2 end #hide
 Qs=Ps=-2:res:2
 pts=[[Q,P] for Q in Qs, P in Ps if Q^2+P^2 <= 4]

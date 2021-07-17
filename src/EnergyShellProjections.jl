@@ -140,7 +140,8 @@ import ProgressMeter
       may be added together (e.g. numbers, arrays, etc...).
     - `res` determines the separation between the elements of `Qs` and `Ps`. It also
       determines `p_res` in the calls to [`∫∫dqdpδϵ`](@ref). It should be a positive
-      real number that is an integer fraction of 2 (i.e. ``2/n`` for some ``n \\in \\mathbb{N}``)
+      real number that is an integer fraction of 2 (i.e. ``2/n`` for some ``n \\in \\mathbb{N}``).
+      Computation time is inversely proportional to the cube of this quantity.
     - If `symmetricQP` is `true`, only the non-positive entries of `Q` and `P` will be computed, 
       and the other entries will be mirrored. Default is `false`.
     - If `symmetricP` is `true`, only the side with 
@@ -284,7 +285,7 @@ import ProgressMeter
       `[Q,q,P,p]` of a coherent state, and [`husimi_of_coherent`](@ref DickeBCE.husimi_of_coherent) is used. 
     - `ϵ`, `Q`, and `P` (which are ``\\epsilon``, ``Q``, and ``P`` above) have to be passed.
     - `Htol` is `tol` for [`DickeBCE.coherent_overlap`](@ref).
-    - `res` determines the resolution of the integral, as in [`matrix_QP∫∫dqdpδϵ`](@ref)
+    - `res` determines the resolution of the integral, as in [`matrix_QP∫∫dqdpδϵ`](@ref).
     - `nonvalue` is the value to return if ``Q,P`` are outside of the energy shell
       at ``\\epsilon``. Default is `NaN`.
     - `mix_states` switches the behaviour if `states` is a matrix. If `false` (default), a result is returned for each
@@ -456,7 +457,8 @@ import ProgressMeter
       may be added together (e.g. numbers, arrays, etc...).
     - `res` determines the separation between the elements of `Qs` and `Ps`. It also
       determines `p_res` in the calls to [`∫∫dqdpδϵ`](@ref). It should be a positive
-      real number that is an integer fraction of 2 (i.e. ``2/n`` for some ``n \\in \\mathbb{N}``)
+      real number that is an integer fraction of 2 (i.e. ``2/n`` for some ``n \\in \\mathbb{N}``).
+      Computation time is inversely proportional to the cube of this quantity.
     - If `symmetricQP` is `true`, only the non-positive entries of `Q` and `P` will be computed, 
       and the other entries will be mirrored. Default is `false`.
     - If `symmetricP` is `true`, only the side with 

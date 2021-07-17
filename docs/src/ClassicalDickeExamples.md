@@ -4,7 +4,6 @@
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 using DickeModel
-on_github=false
 ```
 
 ## Drawing contours of the available phase space
@@ -90,11 +89,10 @@ using DiffEqBase
 
 system = ClassicalDickeSystem(ω=0.8, γ=0.8, ω₀=1)
 ϵ = -1.35
-
-n_points = 100 #making this greater will make a smoother plot,
-                  #but it may take time!
-if !on_github n_points = 2 end #hide
-
+n_points = 50 #making this greater will make a smoother plot,
+              #but it may take time!
+if !on_github n_points = 5 end #hide
+    
 maxQ = maximum_Q_for_ϵ(system,ϵ)
 minQ = minimum_nonnegative_Q_for_ϵ(system,ϵ) 
 maxP = maximum_P_for_ϵ(system,ϵ) 
@@ -102,24 +100,28 @@ Qs = range(minQ, maxQ, length = n_points)
 Ps = range(0, maxP, length = n_points)  #we only compute the top half of 
                           #the plane, and later mirror it
 
-#this matrix contains NaNs (outside of bounds) and tuples [λ,n] 
-#(inside of bounds), where λ is an average of all the Lyapunov 
-#exponents of the n trajectories that have passed through that square
-matrix = [if minimum_ϵ_for(system, P=P, p=0, Q=Q) > ϵ 
-            NaN else [0.0,0] end 
-                for Q in Qs, P in Ps] 
-
+#this matrix will contain the average Lyapunov exponents of the n trajectories 
+#that have passed through that square  or NaN if the point is outside of bounds
+#we make it shared so all workers can use it
+mat_av_lya = [if minimum_ϵ_for(system, P=P, p=0, Q=Q) > ϵ 
+            NaN else 0.0 end 
+                for Q in Qs, P in Ps]
+                
+#this matrix will contain the count of how many trajectories 
+#have passed through that square.
+mat_counts =zeros(Int,length(Qs),length(Ps))
 pts = Tuple{Float64, Float64}[] #a list of points (Q,P) for temporary storage
 
 function save(state) #this function saves (Q,P) to pts if q = q₊ (and not q₋).
-    if q_sign(system,state.u,ϵ) == + 
+    if ClassicalDicke.q_sign(system,state.u,ϵ) == + 
         Q,q,P,p = state.u 
         push!(pts, (Q,P))  
     end                     
 end
-callback=ContinuousCallback((x, t, _) -> x[4], #when p=x[4] is 0,
-    save; #execute the function save
-    save_positions=(false,false), abstol=1e-3)
+callback = ContinuousCallback((x, t, _) -> x[4], #when p=x[4] is 0,
+            save; #execute the function save
+            save_positions=(false,false), abstol=1e-3)
+            
 #an auxiliary function, which gives the index k so that r[k] ≥ v >r[k]
 function index_of_subinterval(v,r) 
     if r[end] <v
@@ -130,46 +132,47 @@ function index_of_subinterval(v,r)
     end
     return Int(round(((v-r[1])/(r[end]-r[1]))*(length(r)-1) +1))
 end
+
 #we iterate over the matrix and the values of Q,P
-for ((Q,P),element) in zip(Iterators.product(Qs,Ps),matrix)
+for ((Q,P),av_lyapunov,count) in zip(Iterators.product(Qs,Ps),mat_av_lya,mat_counts)
     #if we are out of bounds or we have information on this Lyapunov exponent,
-    if element===NaN || element[2] > 0 
+    if av_lyapunov===NaN || count > 0 
         continue #we skip
     end
-    
+
     #the following 4 lines will populate pts with all the points (mQ,mP) in the 
     #Poincaré map that the trajectory starting at (Q,P) passes through.
     empty!(pts)
     push!(pts,(Q,P))
-    point  = Point(system, Q=Q, P=P, p=0, ϵ=ϵ)
-    λ = lyapunov_exponent(system, 
-        t = 5000, 
-        u₀ = point, 
+    point  = ClassicalDicke.Point(system, Q=Q, P=P, p=0, ϵ=ϵ)
+
+    λ = ClassicalSystems.lyapunov_exponent(system, point,
         verbose = false, #hide
-        tol=if !on_github 1e-3   else 1e-12 end, #hide
+        #decreasing these numbers will produce more precise results but takes more time. 
+        tol = 1e-8,
+        λtol = 0.00005,  
         callback = callback)
-    
-    
+
     for (mQ,mP) in pts
         #we save the Lyapunov into all of the squares that the trajectory visited.
-        el = matrix[index_of_subinterval(mQ,Qs),index_of_subinterval(abs(mP),Ps)]
+        iQ,iP = index_of_subinterval(mQ,Qs),index_of_subinterval(abs(mP),Ps)
         #if we are inside bounds
-        if el !== NaN
-           
-            el[1] = (el[1]*el[2] + λ)/(el[2] + 1)  #we update the average
-            el[2] += 1 #we update the count
+        if mat_av_lya[iQ,iP] !== NaN
+            #we update the average
+            mat_av_lya[iQ,iP] = (mat_av_lya[iQ,iP]*mat_counts[iQ,iP] + λ)/(mat_counts[iQ,iP] + 1)  
+            mat_counts[iQ,iP] += 1 #we update the count
         end
     end
-    if !on_github break end #hide
 end
 
-mat=transpose([v[1] for v in matrix]) #we take the average Lyapunovs, and transpose
-#because heatmap takes transposed matrices.
-
+mat=transpose(mat_av_lya) #we transpose because heatmap takes transposed matrices.
 mat=vcat(mat[end:-1:2,1:end], mat) #mirror in P
 Ps=vcat(-Ps[end:-1:2], Ps) #update Ps with negative values
 
-heatmap(Qs, Ps, mat, xlabel="Q", ylabel="P", size=(550,500))
+heatmap(Qs, Ps, mat, 
+        xlabel="Q", ylabel="P", 
+        clim=(0.01,NaN), #Lyapunovs below 0.005 we take as 0
+        size=(550,500))
 savefig("lyapunov_map.svg");nothing #hide
 ```
 ![](lyapunov_map.svg)

@@ -4,7 +4,6 @@
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 using DickeModel
-on_github=false
 ```
 ## Classical evolution of coherent states
 
@@ -19,7 +18,7 @@ using DickeModel.TWA
 using DickeModel.ClassicalDicke
 if false #hide
 addprocs(2) #we add 2 workers. Add as many as there are cores in your computer.
-@everywhere using DickeModel,DickeModel.TWA
+@everywhere using DickeModel
 end #hide
 ```
 The functions from [`DickeModel.TWA`](@ref DickeModel.TWA) will make use
@@ -47,7 +46,12 @@ if !on_github  times=0:1:4 end #hide
 
 N = 20000
 if !on_github N=200 end #hide
-jz_average=average(system;observable=jz, distribution=W, N = N, ts=times)
+jz_average = average(system; 
+    observable = jz, 
+    show_progress = false, #hide
+    distribution = W, 
+    N = N, 
+    ts=times)
 plot(times,jz_average, xlabel="time", 
     ylabel="jz",key=false,ylim=(-1,1), size=(700,350))
 savefig("average_jz_TWA.svg");nothing #hide
@@ -59,9 +63,14 @@ evolves classically using [`TWA.calculate_distribution`](@ref).
 
 ```@example examples
 y_axis_values = -1.1:0.01:1.1
-matrix = calculate_distribution(system; distribution=W, N = N,
-    x=:t,  ts=times,
-    y=jz, ys=y_axis_values)
+matrix = calculate_distribution(system; 
+    distribution = W, 
+    N = N,
+    x=:t,  
+    show_progress=false, #hide
+    ts = times,
+    y = jz, 
+    ys = y_axis_values)
 heatmap(times, y_axis_values, matrix,
     size=(700,350), color=cgrad(:gist_heat, rev=true),
     xlabel="time", ylabel="jz")
@@ -99,9 +108,15 @@ mcs=mcs_chain(
         x=:q,  xs=qs,
         y=:p, ys=ps,ts=times)
 )
-matrix_q_vs_t,matrix_t_vs_p,matrix_q_vs_p = monte_carlo_integrate(system,
-    mcs;ts=times,N=N,distribution=W,tolerate_errors=false)
-    
+matrix_q_vs_t, 
+matrix_t_vs_p, 
+matrix_q_vs_p = monte_carlo_integrate(system, 
+                      mcs;
+                      ts = times,
+                      N = N,
+                      show_progress = false, #hide
+                      distribution = W)
+
     
 plot(heatmap(qs,times, matrix_q_vs_t,
         color=cgrad(:gist_heat, rev=true),
@@ -129,8 +144,17 @@ times = 0:0.1:40
 if !on_github N=200 end #hide
 if !on_github times=0:1 end #hide
 
-matrices = calculate_distribution(system; distribution=W, N = N,
-    x=:q, y=:p,xs=qs, ys=ps, ts=times, animate=true, maxNBatch=200000);
+matrices = calculate_distribution(system; 
+    distribution=W, 
+    N = N,
+    x = :q, 
+    y = :p,
+    xs = qs, 
+    ys = ps, 
+    ts = times, 
+    animate = true, 
+    show_progress = false, #hide
+    maxNBatch = 200000)
 animation=@animate for mat in matrices
     heatmap(qs, ps, mat,
         color = cgrad(:gist_heat, rev=true), size=(600,600), 
@@ -178,13 +202,24 @@ N = 10000
 if !on_github N=200 end #hide
 if !on_github times=0:1:10 end #hide
 
-FOTOC=sum.(variance(system; observable=[:Q,:q,:P,:p], 
-                    distribution=W, N=N, ts=ts, tol=1e-8))
+FOTOC=sum.(
+    variance(system; 
+        observable = [:Q,:q,:P,:p], 
+        distribution = W, 
+        N=N, 
+        ts=ts, 
+        show_progress = false, #hide
+        tol=1e-8)
+            )
 
 plot(ts, FOTOC, 
      xlabel="time", ylabel="FOTOC",
      label="FOTOC", yscale=:log10)
-lyapunov = lyapunov_exponent(system, u₀=x)
+if false #hide
+lyapunov = lyapunov_exponent(system, x)
+else #hide
+lyapunov = lyapunov_exponent(system, x; verbose = false) #hide
+end #hide
 plot!(t->exp(2*lyapunov*t)*2/j, 0, 14, 
     label="exp(2λt)*2ħ", key=:bottomright)
 savefig("FOTOC_TWA.svg");nothing #hide
@@ -219,6 +254,7 @@ if !on_github ϵ_binsize=0.1 end #hide
 ρ = calculate_distribution(system, 
     distribution = W, 
     N = N, 
+    show_progress = false, #hide
     x = ClassicalDicke.hamiltonian(system), 
     xs = ϵs)'
 ρ /= sum(ρ)*ϵ_binsize #normalization

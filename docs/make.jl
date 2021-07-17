@@ -3,8 +3,6 @@ using DickeModel
 using Documenter,Bibliography
 using Distributed
 addprocs(2,exeflags=`--project=docs/`)
-@everywhere @show pwd()
-@everywhere @show @__DIR__
 @everywhere push!(LOAD_PATH,"../src/")
 @everywhere using DickeModel
 #bib = CitationBibliography(Base.Filesystem.joinpath(@__DIR__,"refs.bib"))

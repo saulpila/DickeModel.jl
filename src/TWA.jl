@@ -66,8 +66,9 @@ module TWA
     ```julia
     function monte_carlo_integrate(system::ClassicalSystems.ClassicalSystem,
         mc_system::MonteCarloSystem;
-        tolerate_errors=true,
-        maxNBatch=Inf,kargs...)
+        tolerate_errors::Bool = true,
+        show_progress::Bool = true,
+        maxNBatch::Real=Inf,kargs...)
     ```
     This function is the backbone of this module. It performs a Monte Carlo integration-type procedure.
     The argument `mc_system` determines a `distribution::`[`PhaseSpaceDistribution`](@ref), an integer `N`, and a list of times `ts`.
@@ -91,13 +92,15 @@ module TWA
       This is useful because sometimes a one-in-a-million numerical instability may arise, and
       you may want to ignore it. If more than `100` errors occur consecutively, then then the
       procedure is stopped. Defaults to `true`.
+    - `show_progress` is a boolean that toggles the progress bar. (Default is `true`).
     - `maxNBatch` is the maximum number of batch-sizes sent to each worker. Defaults to `inf`.
     - `kargs` are redirected to [`ClassicalSystems.integrate`].
     """
     function monte_carlo_integrate(system::ClassicalSystems.ClassicalSystem,
         mc_system::MonteCarloSystem;
-        tolerate_errors=true,
-        maxNBatch=Inf,kargs...)
+        tolerate_errors::Bool = true,
+        show_progress::Bool = true,
+        maxNBatch::Real=Inf,kargs...)
         
         f_inicial=mc_system.f_initial
         f_loop=mc_system.f_loop
@@ -107,7 +110,7 @@ module TWA
         distribution_sampler = mc_system.distribution.sample
         ts=mc_system.ts
         N=mc_system.N
-        show_progress= nothing
+        progressbar= nothing
         trabajadores=length(workers())
         if trabajadores==0
             trabajadores=1
@@ -132,16 +135,18 @@ module TWA
             @async while true
                 v= take!(channel)
                 if v==0
-                    if show_progress!=nothing
-                        finish!(show_progress)
+                    if progressbar!=nothing
+                        finish!(progressbar)
                     end
                     break
                 elseif v==1
                     if workersready>=trabajadores
-                        if show_progress==nothing
-                            show_progress=Progress(Int(N-missedprogressloop), 1)
+                        if progressbar==nothing && show_progress
+                            progressbar=Progress(Int(N-missedprogressloop))
                         end
-                        next!(show_progress)
+                        if show_progress
+                            next!(progressbar)
+                        end
                     else
                         missedprogressloop+=1
                     end
@@ -700,9 +705,9 @@ module TWA
         σ=sqrt(ħ/2)
         gaussiana_Θ=Distributions.Normal(0, σ)
         Rayleigh_Θ=Distributions.Rayleigh(σ)
-        R(θ,φ,θ0,φ0)= #rotacion que manda el polo norte a θ0,φ0 aplicada a θ,φ
-            [atan(sqrt((cos(θ0)*cos(φ)*sin(θ)-cos(θ)*sin(θ0))^2+sin(θ)^2*sin(φ)^2),cos(θ)*cos(θ0)+cos(φ)*sin(θ)*sin(θ0)),
-            mod(atan(-cos(φ0)*sin(θ)*sin(φ)-cos(θ0)*cos(φ)*sin(θ)*sin(φ0)+cos(θ)*sin(θ0)*sin(φ0),-cos(θ0)*cos(φ)*cos(φ0)*sin(θ)+cos(θ)*cos(φ0)*sin(θ0)+sin(θ)*sin(φ)*sin(φ0)),2*pi)]
+        R(θ,φ,θ0,φ0)= #rotation that sends north pole to θ0,φ0 applied to a θ,φ
+            (atan(sqrt((cos(θ0)*cos(φ)*sin(θ)-cos(θ)*sin(θ0))^2+sin(θ)^2*sin(φ)^2),cos(θ)*cos(θ0)+cos(φ)*sin(θ)*sin(θ0)),
+            mod(atan(-cos(φ0)*sin(θ)*sin(φ)-cos(θ0)*cos(φ)*sin(θ)*sin(φ0)+cos(θ)*sin(θ0)*sin(φ0),-cos(θ0)*cos(φ)*cos(φ0)*sin(θ)+cos(θ)*cos(φ0)*sin(θ0)+sin(θ)*sin(φ)*sin(φ0)),2*pi))
 
 
         centroθ=PhaseSpaces.θ_of_QP(Q₀,P₀)
@@ -712,7 +717,7 @@ module TWA
                 Θ=acos(cos(θ)*cos(centroθ)+ sin(θ)*sin(centroθ)*cos(φ - centroφ))
                 return Distributions.pdf(gaussiana_Θ,Θ)*sqrt(2*π)*σ *(1/(2*π*σ^2))
             catch
-                return 0
+                return 0.0
             end
         end
         function W((Q,P))
@@ -722,7 +727,7 @@ module TWA
                  φ=PhaseSpaces.φ_of_QP(Q,P)
                  return Wθ(θ,φ)
             catch
-                return 0
+                return 0.0
             end
         end
 

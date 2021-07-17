@@ -5,7 +5,6 @@ on_github=get(ENV, "CI", nothing) == "true"
 cache_fold_name="./diags"
 use_current_dir_for_diags=on_github
 using DickeModel
-on_github=false
 ```
 The module [`DickeModel.UPOs`](@ref DickeModel.UPOs) provides a toolbox for studying periodic orbits (POs) 
 in the classical limit of the Dicke model [Pilatowsky2021](@cite), and their relation with the ubiquitous quantum

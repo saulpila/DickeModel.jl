@@ -4,7 +4,6 @@
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 using DickeModel
-on_github=false
 ```
 
 ## Exponential growth of the FOTOC using the TWA
