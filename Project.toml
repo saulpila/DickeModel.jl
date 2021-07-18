@@ -42,7 +42,7 @@ QuadGK = "2"
 RecursiveArrayTools = "2"
 SymEngine = "0.8"
 Tables = "1"
-WignerSymbols = "2"
+WignerSymbols = "1,2"
 julia = "1.4"
 
 [extras]
