@@ -22,7 +22,7 @@ Pkg.add("DickeModel")
     goes through, instead use:
     ```julia
     using Pkg
-    Pkg.add(url = "https://github.com/saulpila/DickeModel.jl")
+    Pkg.add(PackageSpec(url = "https://github.com/saulpila/DickeModel.jl"))
     ```
     
 To load the package, use the command:
