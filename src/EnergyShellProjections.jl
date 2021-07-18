@@ -70,11 +70,11 @@ import ProgressMeter
         end
         n=Int(2*floor(p₊/p_res) + 1)
 
-        for signo in [+,-]
-            if onlyqroot!==nothing && onlyqroot!==signo
+        for sgn in [+,-]
+            if onlyqroot!==nothing && onlyqroot!==sgn
                 continue
             end
-            mf(p)=f(ClassicalDicke.Point(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signo))
+            mf(p)=f(ClassicalDicke.Point(system,Q=Q,P=P,p=p,ϵ=ϵ,sgn=sgn))
             for k in 1:n
                 mv= (π/(n*ω)) .* mf(p₊*cos(π*(2*k - 1)/(2n)))
                 if val===nonvalue

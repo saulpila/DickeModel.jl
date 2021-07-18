@@ -320,6 +320,10 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         end
         return eigenenergies,eigenstates
     end
+
+#    Assuming that Ek1 ≈ Ek2, checks whether |Ek1> and |Ek1> have different parities,
+#    and, if so, it rotates them inside the degenerate energy subspace so that
+#    the resulting two states have parity 1 and -1.
     function _correct_eigenstates(eigenstates,k1,k2,Π)
         v1=eigenstates[:,k1]
         v2=eigenstates[:,k2]
@@ -643,7 +647,7 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
     function _Cohpart1(n,m,alpha,G)
         s=alpha+G*m
         if n==0 && s==0.0
-            return 0.0im #para evitar 0*log(0)
+            return 0.0im # to avoid 0*log(0)
         end
         return n*log(s) - logfact(n)/2
     end
@@ -710,7 +714,8 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         ϕ=PhaseSpaces.ϕ_of_QP(Q,P)
     
         Ω₁=j*(ω^2*(q^2+p^2)/2+ω₀^2*sin(θ)^2/2 +2*γ^2*((sin( θ)^2*sin(ϕ)^2+cos(θ)^2)*q^2 + sin(θ)^2*cos(ϕ)^2) +2*γ*q*(ω*cos(ϕ) + ω₀*cos(θ)*cos(ϕ))*sin(θ))
-        #note that the sign of the third term is flipped with respect to Lerma2018, because they use cosθ = jz and we use cosθ = - jz.
+        #note that the sign of the third term is flipped with respect to Lerma2018, 
+        #because they use cosθ = jz and we use cosθ = - jz.
     
         Ω₂=γ^2*(sin(θ)^2*sin(ϕ)^2 + cos(θ)^2)
         return sqrt(Ω₁ + Ω₂)/j
@@ -800,11 +805,10 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         end
         return _coherent_overlap(system,x,states;datacache=datacache,datalength=d,chop=chop,normwarning=normwarning)
     end
-    #if you pass estados it calculates overlap with coherent, else  coefficients of coherent.
-    function _coherent_overlap_or_coherent_state(system::QuantumDickeSystem,punto::AbstractArray{<:Real,1};
+    #if you pass states it calculates overlap with coherent, else  coefficients of coherent.
+    function _coherent_overlap_or_coherent_state(system::QuantumDickeSystem,point::AbstractArray{<:Real,1};
                         datacache,datalength=nothing,chop=1e-6,normwarning=0.99,
-                        estados::Union{AbstractArray{<:Number,1},AbstractArray{<:Number,2},Nothing}=nothing,add_state_to_data=false,extra_phase::Complex=1.0+0im)
-        #@fastmath begin
+                        states::Union{AbstractArray{<:Number,1},AbstractArray{<:Number,2},Nothing}=nothing,add_state_to_data=false,extra_phase::Complex=1.0+0im)
             if !add_state_to_data
                 datacache.=0.0im
             end
@@ -812,7 +816,7 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
             ω₀,ω,γ,j,Nmax=get_params(system)
             N=Int(2*j)
             G=2*γ/(ω*sqrt(N))
-            Q,q,P,p=punto
+            Q,q,P,p=point
             theta=PhaseSpaces.θ_of_QP(Q,P)
             phi=PhaseSpaces.φ_of_QP(Q,P)
 
@@ -834,7 +838,6 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
                 mmax=qtlmax(atomicDist,1-chop/4,N)-j
             end
             for m in mmin:mmax
-            #for m in -j:j
                 part2m=part0+_Cohpart2(m,N,j,w,alpha,G)
                 if chop==0
                     nmin=0
@@ -847,9 +850,9 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
                 end
                 for n in nmin:nmax
                     v=conj(exp(_Cohpart1(n,m,alpha,G)+part2m))
-                    if estados!==nothing
+                    if states!==nothing
                         for e in 1:datalength
-                            datacache[e]+=estados[ind(n,m,N,j),e]*v
+                            datacache[e]+=states[ind(n,m,N,j),e]*v
                         end
 
                     else
@@ -861,20 +864,19 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
             if nrm<normwarning
                 @warn "The coherent state is not converged (norm=$nrm). You are probably working in an energy regime that is too high. You should make Nmax bigger."
             end
-        #end
         return datacache
     end
     _coherent_overlap(system::QuantumDickeSystem,
-    punto::AbstractArray{<:Real,1},
-    estados::Union{AbstractArray{<:Number,1},AbstractArray{<:Number,2}};
+    point::AbstractArray{<:Real,1},
+    states::Union{AbstractArray{<:Number,1},AbstractArray{<:Number,2}};
     datacache,
     datalength,
     chop=1e-6,
-    normwarning=0.99) =_coherent_overlap_or_coherent_state(system,punto;
+    normwarning=0.99) =_coherent_overlap_or_coherent_state(system,point;
                                                         datacache=datacache,
                                                         datalength=datalength,
                                                         chop=chop,
-                                                        estados=estados,
+                                                        states=states,
                                                         normwarning=normwarning)
     """
     ```julia
@@ -887,32 +889,7 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         r=coherent_overlap(args...;kargs...)
         return abs2.(r)
     end
-
-    #esto no funciona para j grande, me cambie a WignerSymbols
-    function clebsch(j1, j2, j3, m1, m2, m3)
-
-        if m3 != m1 + m2
-            return 0
-        end
-        vmin = Int(max(-j1 + j2 + m3, -j1 + m1, 0))
-        vmax = Int(min(j2 + j3 + m1, j3 - j1 + j2, j3 + m3))
-
-        C = exp((log(2.0 * j3 + 1.0) + logfact(j3 + j1 - j2) +
-                    logfact(j3 - j1 + j2) + logfact(j1 + j2 - j3) +
-                    logfact(j3 + m3) + logfact(j3 - m3) -
-                    (logfact(j1 + j2 + j3 + 1) +
-                    logfact(j1 - m1) + logfact(j1 + m1) +
-                    logfact(j2 - m2) + logfact(j2 + m2)))/2)
-        S = 0
-        for v in vmin:vmax
-            S += (-1.0) ^ (v + j2 + m2)* exp( -logfact(v) +
-                logfact(j2 + j3 + m1 - v) + logfact(j1 - m1 + v) -
-                logfact(j3 - j1 + j2 - v) - logfact(j3 + m3 - v) -
-                logfact(v + j1 - j2 - m3))
-        end
-        C = C * S
-        return C
-    end
+    
     function sph_harm(l,m,theta,phi;legendre_sphPlm_cache=:nothing)
         fact=1
         if m<0
@@ -983,11 +960,11 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         return (exp((logfact(np)-logfact(n))/2 +
             im*(np-n)*atan(p,q)- two_r_squared/2)*(-1)^(np)/π * two_r_squared^((n-np)/2)*laguerre(np,n-np,two_r_squared))
     end
-    function Wigner_Fock_Recorrida(n,np,m,mp,G,pt)
+    function Wigner_Fock_displaced(n,np,m,mp,G,pt)
         q=pt[1]
         p=pt[2]
 
-        qrec=q+G*(m+mp)/2 #por el desplazamiento de alpha_m
+        qrec=q+G*(m+mp)/2 # alpha_m displacement
         return exp(-im*p*G*(mp-m))*Wigner_Fock(n,np,qrec,p)
     end
     """
@@ -1006,48 +983,39 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         points::Vector{<:AbstractVector{<:Real}})
         
         ω₀,ω,γ,j,Nmax=get_params(system)
-        puntos=points
         
         N=Int(2*j)
         G=2*γ/(ω*sqrt(N))
 
-        puntos=classical_QqPp_to_quantum_rot_qpθφ.(j,puntos)
-        legendre_sphPlm_cache=generate_legendre_sphPlm_cache(Int(2*j),puntos)
+        points=classical_QqPp_to_quantum_rot_qpθφ.(j,points)
+        legendre_sphPlm_cache=generate_legendre_sphPlm_cache(Int(2*j),points)
         #θ,φ=theta,phi
-
-
         function B(n,l,np,lp)
             altsm(n-l)*altsm(np-lp)*exp((logfact(n)+logfact(np))/2 -
                 (logfact(l)+logfact(lp)))
         end
 
-
-
-
-
-        W=fill!(similar(puntos,Complex{Float64}),0)
-        _Wd=fill!(similar(puntos,Complex{Float64}),0)
+        W=fill!(similar(points,Complex{Float64}),0)
+        _Wd=fill!(similar(points,Complex{Float64}),0)
         for m in -j:j, mp in -j:j
 
-            mWd=Wigner_Dicke!(m,mp,j,puntos,_Wd,legendre_sphPlm_cache=legendre_sphPlm_cache)
+            mWd=Wigner_Dicke!(m,mp,j,points,_Wd,legendre_sphPlm_cache=legendre_sphPlm_cache)
             for n in 0:(Nmax-1),np in 0:n
                 _factor=state[ind(n,m,N,j)]*conj(state[ind(np,mp,N,j)])
                 if norm(_factor)<1e-6
                     continue
                 end
                 mW=_factor*mWd
-                mW.*=Wigner_Fock_Recorrida.(n,np,m,mp,G,puntos)
+                mW.*=Wigner_Fock_displaced.(n,np,m,mp,G,points)
                 W+= real.(mW*(n==np ? 1 : 2))
-             #   if n!=np
-             #       W+=conj.(mW)
-              #  end
+
             end
 
 
         end
         return real.(W)
     end
-    function Wigner_Dicke!(m::Int64,mp::Int64,j::Int64,puntos::AbstractVector{<:AbstractVector{<:Real}},result::Array{<:Complex,1};legendre_sphPlm_cache=:nothing)
+    function Wigner_Dicke!(m::Int64,mp::Int64,j::Int64,points::AbstractVector{<:AbstractVector{<:Real}},result::Array{<:Complex,1};legendre_sphPlm_cache=:nothing)
 
         result.=0.0+0.0im
 
@@ -1055,10 +1023,10 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
             i=m-mp
             _f=(-1)^(j - m - i) * clebschgordan(j,m, j,-mp, k,i)
             if _f !=0
-                 result +=   _f*sph_harm_pt.(k, i, puntos,legendre_sphPlm_cache=legendre_sphPlm_cache)
+                 result +=   _f*sph_harm_pt.(k, i, points,legendre_sphPlm_cache=legendre_sphPlm_cache)
             end
         end
-        return result*sqrt((2*j+1)/(4*pi)) #normalizamos
+        return result*sqrt((2*j+1)/(4*pi)) #normalize
     end
     function realmult(w2::Complex{Float64},factor)
         return real(factor*w2)
@@ -1084,21 +1052,21 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         ω₀,ω,γ,j,Nmax=get_params(system)
         N=Int(2*j)
         G=2*γ/(ω*sqrt(N))
-        puntos=[classical_QqPp_to_quantum_rot_qpθφ(j,[Q,0.0,P,0.0]) for (Q,P) in ptsQP]
+        points=[classical_QqPp_to_quantum_rot_qpθφ(j,[Q,0.0,P,0.0]) for (Q,P) in ptsQP]
         tmD=0.0
         tmF=0.0
         tmM=0.0
-        _Wd=similar(puntos,Complex{Float64})
-        AllWs=[similar(puntos,Float64) for s in states]
+        _Wd=similar(points,Complex{Float64})
+        AllWs=[similar(points,Float64) for s in states]
         fill!.(AllWs,0.0)
 
-        legendre_sphPlm_cache=generate_legendre_sphPlm_cache(Int(2*j),puntos)
+        legendre_sphPlm_cache=generate_legendre_sphPlm_cache(Int(2*j),points)
         if show_progress
             p = Progress(Int((2*j+1)^2*(Nmax-1)*Nmax/2),1)
         end
         for m in -j:j, mp in -j:j
 
-            _Wd=Wigner_Dicke!(m,mp,j,puntos,_Wd,legendre_sphPlm_cache=legendre_sphPlm_cache)
+            _Wd=Wigner_Dicke!(m,mp,j,points,_Wd,legendre_sphPlm_cache=legendre_sphPlm_cache)
 
             for n in 0:(Nmax-1),np in 0:n
                 if np==n && mp==m
@@ -1113,7 +1081,6 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
                     if abs(finalfactor) ==0
                         continue
                     end
-                 #   AllWs[i] = AllWs[i]+sumrealpart.(AllWs[i],_Wd,finalfactor) #forma eficiente de hacer W+=real.(finalfactor*_Wd)
                     AllWs[i].+=realmult.(_Wd,finalfactor)
                 end
                 if show_progress
@@ -1130,32 +1097,32 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         return AllWs
     end
 
-    function WignerProjp(system,states,puntos)
+    function WignerProjp(system,states,points)
         ω₀,ω,γ,j,Nmax=get_params(system)
         N=Int(2*j)
         G=2*γ/(ω*sqrt(N))
-        puntos=classical_QqPp_to_quantum_rot_qpθφ.(j,puntos)
+        points=classical_QqPp_to_quantum_rot_qpθφ.(j,points)
         tmD=0.0
         tmF=0.0
         tmM=0.0
-        _Wd=similar(puntos,Complex{Float64})
-        _FactorHermite=similar(puntos,Float64)
-        AllWs=[similar(puntos,Float64) for s in states]
+        _Wd=similar(points,Complex{Float64})
+        _FactorHermite=similar(points,Float64)
+        AllWs=[similar(points,Float64) for s in states]
         fill!.(AllWs,0.0)
 
-        legendre_sphPlm_cache=generate_legendre_sphPlm_cache(Int(2*j),puntos)
-        hermite_cache=generate_hermite_cache(Nmax-1,Iterators.flatten((x[1]+G*m for m in -j:j) for x in puntos))
+        legendre_sphPlm_cache=generate_legendre_sphPlm_cache(Int(2*j),points)
+        hermite_cache=generate_hermite_cache(Nmax-1,Iterators.flatten((x[1]+G*m for m in -j:j) for x in points))
         function Fock_n_np_wavefunction(n::Int64,m::Int64,np::Int64,mp::Int64,x::Array{Float64,1})
             return exp(-(logfact(np)+logfact(n)+(np+n)*log(2))/2 - (x[1]+G*m)^2/2 - (x[1]+G*mp)^2/2)*hermite_cache[n,x[1]+G*m]*hermite_cache[np,x[1]+G*mp]/sqrt(pi)
         end
         p = Progress(Int((2*j+1)^2*(Nmax-1)*Nmax/2),1)
         for m in -j:j, mp in -j:j
 
-            _Wd=Wigner_Dicke!(m,mp,j,puntos,_Wd,legendre_sphPlm_cache=legendre_sphPlm_cache)
+            _Wd=Wigner_Dicke!(m,mp,j,points,_Wd,legendre_sphPlm_cache=legendre_sphPlm_cache)
 
             for n in 0:(Nmax-1),np in 0:n
 
-                _FactorHermite.=Fock_n_np_wavefunction.(n,m,np,mp,puntos)
+                _FactorHermite.=Fock_n_np_wavefunction.(n,m,np,mp,points)
 
 
                 for i in 1:length(states)
@@ -1193,18 +1160,18 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
 
         N=Int(2*j)
         G=2*γ/(ω*sqrt(N))
-        puntos=[classical_QqPp_to_quantum_rot_qpθφ(j,[0.0,q,0.0,p]) for (q,p) in ptsqp]
+        points=[classical_QqPp_to_quantum_rot_qpθφ(j,[0.0,q,0.0,p]) for (q,p) in ptsqp]
         #θ,φ=theta,phi
 
-        W=fill!(similar(puntos,Complex),0)
-        _Wd=fill!(similar(puntos,Complex),0)
+        W=fill!(similar(points,Complex),0)
+        _Wd=fill!(similar(points,Complex),0)
         for m in -j:j
             for n in 0:(Nmax-1),np in 0:n
                 _factor=state[ind(n,m,N,j)]*conj(state[ind(np,m,N,j)])
                 if norm(_factor)<1e-20
                     continue
                 end
-                mW=_factor*Wigner_Fock_Recorrida.(n,np,m,m,G,puntos)
+                mW=_factor*Wigner_Fock_displaced.(n,np,m,m,G,points)
 
                 W+= real.(mW*(n==np ? 1 : 2))
 
@@ -1387,7 +1354,9 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         ϵ0,ϵf=Distributions.quantile(envelope,tol/2),Distributions.quantile(envelope,1-tol/2)
         if parity!=nothing
             par=parity(1)
-            is_correct_parity = k -> parities[k]==par #debes hacerlo con anonymus functions si no julia tiene un bug bien raro https://github.com/JuliaLang/julia/issues/15602
+            #this HAS to be done with an anonymous function, because
+            # https://github.com/JuliaLang/julia/issues/15602
+            is_correct_parity = k -> parities[k]==par 
 
         else
             is_correct_parity = k -> true #idem
@@ -1443,4 +1412,3 @@ export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, dia
         return cachedata
      end
 end
-

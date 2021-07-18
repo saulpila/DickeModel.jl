@@ -11,7 +11,7 @@ in the classical limit of the Dicke model [Pilatowsky2021](@cite), and their rel
 scarring they produce [Pilatowsky2021NatCommun](@cite).
 
 
-## The fundamental families of periodic orbits.
+## The fundamental families of periodic orbits
 In Ref. [Pilatowsky2020](@cite), it was shown that two families of periodic orbits
 emanate from the normal modes of the ground state configuration of the classical Dicke
 model. These families are called family ``\mathcal{A}`` and family ``\mathcal{B}``. They
@@ -76,7 +76,7 @@ orbits_plot
 Plots.isijulia() = false 
 ```
 Now try with family ``\mathcal{B}``!
-## Finding periodic orbits with the Husimi function of the eigenstates.
+## Finding periodic orbits with the Husimi function of the eigenstates
 
 In this example, we will find a family of periodic orbits by looking at the scars it
 produces in a quantum eigenstates. This procedure was used in Ref. [Pilatowsky2021Identification](@cite) with
@@ -232,7 +232,7 @@ P0=0.6
 function hus(;p,Q,P)
     let point
         try 
-            point=Point(system, Q=Q, P=P, p=p, ϵ=ϵs[k], signo=+)
+            point=Point(system, Q=Q, P=P, p=p, ϵ=ϵs[k], sgn=+)
         catch #the point is outside the energy shell.
             return 0
         end
@@ -263,19 +263,27 @@ We now can define an initial condition
 u0 = Point(system, Q=Q0, P=P1, p=pmax1, ϵ=ϵs[k])
 ```
 
-It is time to use the module [`UPOs`](@ref DickeModel.UPOs). Let us first see how the evolution of this
-point looks like with [`UPOs.QP`](@ref DickeModel.UPOs.QP). Let's evolve it for, say, `T = 10`:
+Let us first see how the evolution of this
+point looks like with [`ClassicalSystems.integrate`](@ref). Let's evolve it for, say, `T = 10`:
 ```@setup examples
 @info "Starting example: UPOS from Husimi, evolution test"
 ```
 ```@example examples
-using DickeModel.UPOs
-matrixPlot = heatmap(Qs, Ps, mat, xlabel="Q", ylabel="P", key=false)
-scatter(matrixPlot, [(u0[1],u0[3])])
-plot!(QP(PO(system, u0, 10)))
+heatmap(Qs, Ps, mat, xlabel="Q", ylabel="P", key=false)
+scatter!([(u0[1],u0[3])])
+plot!(integrate(system, u0, 10), vars=(:Q,:P))
+plot!(xlim=(Qs[1],Qs[end])) #hide
 ```
 
-It looks like it is following the scar. To estimate the period, we can use [`UPOs.approximate_period`](@ref DickeModel.UPOs.approximate_period).
+It looks like it is following the scar. 
+
+It is time to use the module [`UPOs`](@ref DickeModel.UPOs) to help us estimate a period.
+```@example examples
+using DickeModel.UPOs
+nothing; #hide
+```
+
+We can use [`UPOs.approximate_period`](@ref DickeModel.UPOs.approximate_period).
 We give it a `bound = 0.5`, and it will tell us the time it takes for the periodic condition to come back
 to the same `p` plane inside a neighborhood of radius `bound` around `u0`:
 ```@repl examples
@@ -283,7 +291,10 @@ T = UPOs.approximate_period(system, u0; bound=0.5)
 ```
 It found a period! The evolution up to that period looks like this:
 ```@example examples
-plot(matrixPlot, QP(PO(system, u0, T)))
+heatmap(Qs, Ps, mat, xlabel="Q", ylabel="P", key=false)
+scatter!([(u0[1],u0[3])])
+plot!(integrate(system, u0, T), vars=(:Q,:P))
+plot!(xlim=(Qs[1],Qs[end])) #hide
 ```
 Well, it doesn't come back completely, and it looks a bit wonky, but the monodromy method [DeAguiar1988](@cite), [Baranger1988](@cite), [Pilatowsky2021](@cite), [Simonovi1999](@cite) will come to our aid. This algorithm converges to a true periodic orbit given a good enough initial guess, like ours.
 It is implemented in [`UPOs.monodromy_method_constant_energy`](@ref DickeModel.UPOs.monodromy_method_constant_energy), which conserves the energy
@@ -295,7 +306,9 @@ of the initial condition.
 po = monodromy_method_constant_energy(system, u0, T)
 ```
 ```@example examples
-plot(matrixPlot, QP(po))
+heatmap(Qs, Ps, mat, xlabel="Q", ylabel="P", key=false)
+scatter!([(po.u[1],po.u[3])])
+plot!(QP(po))
 ```
 That is a nice periodic orbit!
 
@@ -308,7 +321,7 @@ scarring_measure(po,state)
 This tells us that the state is ``\sim 12`` times more likely to be found near the PO than
 a totally delocalized state.
 
-We can also compute its Lyapunov exponent using [`UPOs.lyapunov`](@ref DickeModel.UPOs.lyapunov)
+We can also compute its Lyapunov exponent using [`UPOs.lyapunov`](@ref DickeModel.UPOs.lyapunov):
 ```@repl examples
 lyapunov(po)
 ```

@@ -125,25 +125,25 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     """
     ```julia
     function normal_frequency(system::DickeSystem,
-        signo::Union{typeof(-),typeof(+)} = +)
+        sgn::Union{typeof(-),typeof(+)} = +)
     ```
     Returns the ground-state normal frequency, that is, ``\\Omega_{\\epsilon_{\\text{GS}}}^{A,B}`` at the bottom of page 3 of Ref. [Pilatowsky2021](@cite).
 
     # Arguments
     - `system` should be a subtype of [`DickeSystem`](@ref ClassicalDicke.DickeSystem).
 
-    - `signo` is `-` for ``\\Omega^A`` and `+` for ``\\Omega^B``. Defaults to `+`.
+    - `sgn` is `-` for ``\\Omega^A`` and `+` for ``\\Omega^B``. Defaults to `+`.
 
     Note: This function currently only works for the supperadiant phase.
     """
-    function normal_frequency(system::DickeSystem,signo::Union{typeof(-),typeof(+)}=+)
+    function normal_frequency(system::DickeSystem,sgn::Union{typeof(-),typeof(+)}=+)
         ω₀,ω,γ=ClassicalSystems.parameters(system)
         γc=sqrt(ω₀*ω)/2
         if γc>γ
             error("No methods for the normal phase (please add it!)")
             return
         end
-        return sqrt((1/(2*γc^4))*signo(ω^2*γc^4 + ω₀^2*γ^4, sqrt((ω₀^2*γ^4 -ω^2*γc^4)^2 + 4*γc^8*ω^2*ω₀^2)))
+        return sqrt((1/(2*γc^4))*sgn(ω^2*γc^4 + ω₀^2*γ^4, sqrt((ω₀^2*γ^4 -ω^2*γc^4)^2 + 4*γc^8*ω^2*ω₀^2)))
     end
 
     """
@@ -235,7 +235,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
         P::Real,
         p::Real,
         ϵ::Real,
-        signo::Union{typeof(-),typeof(+)}=+,
+        sgn::Union{typeof(-),typeof(+)}=+,
         returnNaNonError::Bool=true)
     ```
     Returns the solutions ``q_\\pm`` of the second degree equation in ``q`` given by
@@ -249,7 +249,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
 
     # Keyword arguments
     - `Q`, `P`, `p`, and `ϵ` are values of ``Q``, ``P``, ``p``, and ``\\epsilon``, respectively.
-    - `signo` is `+` for ``q_+`` and `-` for ``q_-``
+    - `sgn` is `+` for ``q_+`` and `-` for ``q_-``
     - If `returnNaNonError` is `true`, then `NaN` is returned if there are no solutions. If it is `false`, and error is raised.
     """
     function q_of_ϵ(system::DickeSystem;
@@ -257,7 +257,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
         P::Real,
         p::Real,
         ϵ::Real,
-        signo::Union{typeof(-),typeof(+)}=+,
+        sgn::Union{typeof(-),typeof(+)}=+,
         returnNaNonError::Bool=true)
         Δ=discriminant_of_q_solution(system;Q=Q,P=P,p=p,ϵ=ϵ)
         if Δ<0
@@ -269,7 +269,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
             end
         end
         ω₀,ω,γ=ClassicalSystems.parameters(system)
-        return signo(-2*γ*Q*sqrt(1-(Q^2+P^2)/4),sqrt(Δ))/ω
+        return sgn(-2*γ*Q*sqrt(1-(Q^2+P^2)/4),sqrt(Δ))/ω
     end
     """
     ```julia
@@ -281,8 +281,8 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```math
         h_\\text{cl}(Q,q,P,p)=\\epsilon.
     ```
-    That is, this function returns `+` if `q=x[2] ≈ q_of_ϵ(system;Q=x[1],P=x[3],p=x[4],ϵ=ϵ,signo=+)`
-    and returns `-` if `q=x[2] ≈ q_of_ϵ(system;Q=x[1],P=x[3],p=x[4],ϵ=ϵ,signo=-)`.
+    That is, this function returns `+` if `q=x[2] ≈ q_of_ϵ(system;Q=x[1],P=x[3],p=x[4],ϵ=ϵ,sgn=+)`
+    and returns `-` if `q=x[2] ≈ q_of_ϵ(system;Q=x[1],P=x[3],p=x[4],ϵ=ϵ,sgn=-)`.
     # Arguments
     - `system` should be a subtype of [`DickeSystem`](@ref ClassicalDicke.DickeSystem).
 
@@ -293,8 +293,8 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
         x::AbstractVector{<:Real},
         ϵ::Real=hamiltonian(system)(x))
         Q,q,P,p = x
-        q₊ = q_of_ϵ(system; Q=Q, P=P, p=p, ϵ=ϵ, signo=+)
-        q₋ = q_of_ϵ(system; Q=Q, P=P, p=p, ϵ=ϵ, signo=-)
+        q₊ = q_of_ϵ(system; Q=Q, P=P, p=p, ϵ=ϵ, sgn=+)
+        q₋ = q_of_ϵ(system; Q=Q, P=P, p=p, ϵ=ϵ, sgn=-)
         if abs(q - q₊) < abs(q - q₋) 
           return +
         else
@@ -413,7 +413,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
         P::Real,
         p::Real,
         ϵ::Real,
-        signo::Union{typeof(-),typeof(+)} = +)
+        sgn::Union{typeof(-),typeof(+)} = +)
     ```
     Returns a list `[Q,q,P,p]`, where `q` is calculated with [`ClassicalDicke.q_of_ϵ`](@ref). 
     If there are no solutions for ``q``, an error is raised.
@@ -423,7 +423,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
         P::Real,
         p::Real,
         ϵ::Real,
-        signo::Union{typeof(-),typeof(+)} = +) = Point(q=q_of_ϵ(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signo,returnNaNonError=false),
+        sgn::Union{typeof(-),typeof(+)} = +) = Point(q=q_of_ϵ(system,Q=Q,P=P,p=p,ϵ=ϵ,sgn=sgn,returnNaNonError=false),
                                                         P=P, p=p, Q=Q)
 
     """
@@ -456,11 +456,11 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     # """
     #  function WignerHWxSU2_fixed_ϵ(system::DickeSystem;Q,P,p,ϵ,j,signoq=+)
     #         Δ(Q,P)=discriminant_of_q_solution(system;Q=Q,P=P,p=p,ϵ=ϵ)
-    #         x₀=Point(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signoq);
+    #         x₀=Point(system,Q=Q,P=P,p=p,ϵ=ϵ,sgn=signoq);
     #         dst=TWA.coherent_Wigner_HWxSU2(x₀,j);
     #         function probability_density(u)
     #             Q,q,P,p=u
-    #             return dst.probability_density(Point(system,Q=Q,P=P,p=p,ϵ=ϵ,signo=signoq))/sqrt(Δ(Q,P))
+    #             return dst.probability_density(Point(system,Q=Q,P=P,p=p,ϵ=ϵ,sgn=signoq))/sqrt(Δ(Q,P))
     #         end
     #         function logf(u)
     #             θ,ϕ,p=u
@@ -476,7 +476,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     #         m = RWMVariate([PhaseSpaces.θ_of_QP(Q,P),PhaseSpaces.ϕ_of_QP(Q,P),p], [1/sqrt(j),1/sqrt(j),1/sqrt(j)],logf,proposal = Normal)
     #         function sample()
     #                 θ,ϕ,p=sample!(m)
-    #                 return Point(system,Q=PhaseSpaces.Q_of_θϕ(θ,ϕ),P=PhaseSpaces.P_of_θϕ(θ,ϕ),p=p,ϵ=ϵ,signo=signoq)
+    #                 return Point(system,Q=PhaseSpaces.Q_of_θϕ(θ,ϕ),P=PhaseSpaces.P_of_θϕ(θ,ϕ),p=p,ϵ=ϵ,sgn=signoq)
     #         end
     #         for i in 1:10000
     #             sample!(m) #bake

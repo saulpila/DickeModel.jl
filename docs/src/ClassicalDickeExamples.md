@@ -27,6 +27,45 @@ savefig("contourQP.svg"); nothing #hide
 ```
 ![](contourQP.svg)
 
+## Animating the classical evolution
+We may use [`ClassicalSystems.integrate`](@ref) to classically evolve a point in 
+the phase space. In this example, we compute the evolution of a point in
+the chaotic regime of the phase space, and project it into the bosonic ``(q,p)`` plane.
+We use [`@animate` from Plots](https://docs.juliaplots.org/latest/animations/) to create
+an animation.
+
+```@setup examples
+@info "Starting example: Point animation"
+```
+```@example examples
+using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
+using Plots
+system = ClassicalDickeSystem(ω=1, ω₀=1, γ=1)
+ϵ = -0.5
+u0 = Point(system, Q=0, P=0, p=0, ϵ = ϵ)
+times = 0:200
+if !on_github #hide
+    times = 0:10 #hide
+end #hide
+
+u = integrate(system, u0, times[end]) 
+
+# plot of border (see previous example)
+pl=contour(-4:0.01:4, -2:0.01:2,
+        (q,p) -> minimum_ϵ_for(system; P=0,p,q),
+        levels=[ϵ], xlabel="q", 
+        ylabel="p", color=:black, key=false)
+
+animation = @animate for t in times
+    plot(pl, u, tspan=(0,t), vars=(:q,:p), xlim=(-4,4))
+end
+mp4(animation,
+    show_msg=false, #hide
+    "animation_of_classical_evolution.mp4")
+nothing; #hide
+```
+![](animation_of_classical_evolution.mp4)
+
 ## Drawing a Poincaré surface
 
 Using [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)), 

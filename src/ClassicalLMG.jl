@@ -91,7 +91,7 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     function P_of_ϵ(system::ClassicalLMGSystem;
         Q::Real,
         ϵ::Real,
-        signo::Union{typeof(-),typeof(+)}=+,
+        sgn::Union{typeof(-),typeof(+)}=+,
         returnNaNonError::Bool=true)
     ```
     Returns the solutions ``P_\\pm`` of the second degree equation in ``P`` given by
@@ -104,13 +104,13 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     - `system` should be generated with [`ClassicalLMGSystem`](@ref).
     # Keyword arguments
     - `Q` and `ϵ` are values of ``Q`` and ``\\epsilon``, respectively.
-    - `signo` is `+` for ``P_+`` and `-` for ``P_-``
+    - `sgn` is `+` for ``P_+`` and `-` for ``P_-``
     - If `returnNaNonError` is `true`, then `NaN` is returned if there are no solutions. If it is `false`, and error is raised.
     """
     function P_of_ϵ(system::ClassicalLMGSystem;
         Q::Real,
         ϵ::Real,
-        signo::Union{typeof(-),typeof(+)}=+,
+        sgn::Union{typeof(-),typeof(+)}=+,
         returnNaNonError::Bool=true)
         Δ=discriminant_of_P_solution(system,Q,ϵ)
         if Δ<0
@@ -121,7 +121,7 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
                 error("The minimum energy for the given parameters is $ϵmin. There is no P such that (Q=$Q,P) has ϵ=$ϵ.")
             end
         end
-        return signo(0.0,sqrt(Δ))
+        return sgn(0.0,sqrt(Δ))
     end
     """
     ```julia
@@ -173,7 +173,7 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     function Point(system::ClassicalLMGSystem;
         Q::Real,
         ϵ::Real,
-        signo::Union{typeof(-),typeof(+)} = +)
+        sgn::Union{typeof(-),typeof(+)} = +)
     ```
     Returns a list `[Q,P]`, where `P` is calculated with [`P_of_ϵ`](@ref). 
     If there are no solutions for ``P``, an error is raised.
@@ -181,5 +181,5 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     Point(system::ClassicalLMGSystem;
         Q::Real,
         ϵ::Real,
-        signo::Union{typeof(-),typeof(+)}=+)=Point(Q=Q,P=P_of_ϵ(system;Q=Q,ϵ=ϵ,signo=signo,returnNaNonError=false))
+        sgn::Union{typeof(-),typeof(+)}=+)=Point(Q=Q,P=P_of_ϵ(system;Q=Q,ϵ=ϵ,sgn=sgn,returnNaNonError=false))
 end

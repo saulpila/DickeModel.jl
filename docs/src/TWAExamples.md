@@ -28,7 +28,7 @@ end #hide
 ```
 The functions from [`DickeModel.TWA`](@ref DickeModel.TWA) will make use
 of all the available workers.
-!!! warning 
+!!! note 
     The line 
     ```julia 
     @everywhere using DickeModel
@@ -293,8 +293,8 @@ savefig("SP_QvsTWA.svg");nothing #hide
 
 The FOTOC is a quantum equivalent of the classical Lyapunov exponent. It is just
 the variance ``\text{var}(Q)+\text{var}(q)+\text{var}(P)+\text{var}(p)`` as a function
-of time. It may be calculated using the TWA. 
-(See Ref. [Pilatowsky2020](@cite) and references therein).
+of time. It may be calculated using the TWA with [`TWA.variance`](@ref).
+See Ref. [Pilatowsky2020](@cite) and references therein.
 ```@setup examples
 @info "Starting example: TWA FOTOC Dicke"
 ```
@@ -338,9 +338,11 @@ savefig("FOTOC_TWA.svg");nothing #hide
 ![](FOTOC_TWA.svg)
 
 ## [Energy profiles of a coherent state](@id semiclassicalLDoS)
+The functions in this module may be useful even when there is no time evolution.
 We have a semiclassical formula for the energy width of a coherent state, given in App. A of Ref. [Lerma2018](@cite),
 and implemented in [`DickeBCE.energy_width_of_coherent_state`](@ref). Let's check
-this formula against the semiclassical local density of states given by Eq. (E.3) of Ref. [Villasenor2020](@cite).
+this formula against the semiclassical local density of states given by Eq. (E.3) of
+Ref. [Villasenor2020](@cite), which we may compute using [`TWA.calculate_distribution`](@ref).
 ```@setup examples
 @info "Starting example: Semiclassical LDoS"
 ```

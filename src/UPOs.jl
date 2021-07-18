@@ -431,8 +431,8 @@ export PO,search_in_interval,approximate_period,
     ϵ = ClassicalDicke.hamiltonian(system)(u₀)
     for j in 1:maxiters
         if correct_energy
-            signo = ClassicalDicke.q_sign(system,u₁)
-            u₁=Point(system,Q=u₁[1],P=u₁[3],p=u₁[4],signo=signo,ϵ=ϵ)
+            sgn = ClassicalDicke.q_sign(system,u₁)
+            u₁=Point(system,Q=u₁[1],P=u₁[3],p=u₁[4],sgn=sgn,ϵ=ϵ)
         end
         u₁,T₁,Δ=monodromy_method_step_constant_energy(system,u₁,T₁;tol=inttol)
         if T₁<0
@@ -941,4 +941,3 @@ export PO,search_in_interval,approximate_period,
     end
     
 end
-                                                                                          
