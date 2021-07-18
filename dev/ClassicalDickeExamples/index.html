@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>ClassicalDicke · DickeModel.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script><link href="../assets/customcss.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">DickeModel.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">The DickeModel.jl package</a></li><li><span class="tocitem">Documentation</span><ul><li><a class="tocitem" href="../ClassicalDicke/">ClassicalDicke</a></li><li><a class="tocitem" href="../DickeBCE/">DickeBCE</a></li><li><a class="tocitem" href="../UPOs/">UPOs</a></li><li><a class="tocitem" href="../TWA/">TWA</a></li><li><a class="tocitem" href="../EnergyShellProjections/">EnergyShellProjections</a></li><li><a class="tocitem" href="../ClassicalLMG/">ClassicalLMG</a></li><li><a class="tocitem" href="../ClassicalSystems/">ClassicalSystems</a></li><li><a class="tocitem" href="../PhaseSpaces/">PhaseSpaces</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>ClassicalDicke</a><ul class="internal"><li><a class="tocitem" href="#Drawing-contours-of-the-available-phase-space"><span>Drawing contours of the available phase space</span></a></li><li><a class="tocitem" href="#Plotting-the-density-of-states"><span>Plotting the density of states</span></a></li><li><a class="tocitem" href="#Drawing-a-Poincaré-surface"><span>Drawing a Poincaré surface</span></a></li><li><a class="tocitem" href="#Drawing-a-Lyapunov-exponent-map"><span>Drawing a Lyapunov exponent map</span></a></li></ul></li><li><a class="tocitem" href="../DickeBCEExamples/">DickeBCE (Quantum Dicke)</a></li><li><a class="tocitem" href="../EnergyShellProjectionsExamples/">EnergyShellProjections</a></li><li><a class="tocitem" href="../TWAExamples/">TWA</a></li><li><a class="tocitem" href="../ClassicalLMGExamples/">ClassicalLMG</a></li><li><a class="tocitem" href="../UPOsExamples/">UPOs</a></li></ul></li><li><a class="tocitem" href="../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>ClassicalDicke</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>ClassicalDicke</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/saulpila/DickeModel.jl/blob/master/docs/src/ClassicalDickeExamples.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Examples-for-ClassicalDicke"><a class="docs-heading-anchor" href="#Examples-for-ClassicalDicke">Examples for ClassicalDicke</a><a id="Examples-for-ClassicalDicke-1"></a><a class="docs-heading-anchor-permalink" href="#Examples-for-ClassicalDicke" title="Permalink"></a></h1><h2 id="Drawing-contours-of-the-available-phase-space"><a class="docs-heading-anchor" href="#Drawing-contours-of-the-available-phase-space">Drawing contours of the available phase space</a><a id="Drawing-contours-of-the-available-phase-space-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-contours-of-the-available-phase-space" title="Permalink"></a></h2><p>We may use the function <a href="../ClassicalDicke/#DickeModel.ClassicalDicke.minimum_ϵ_for"><code>ClassicalDicke.minimum_ϵ_for</code></a> to draw the contour of the available phase space on the variables <span>$(Q,P)$</span>.</p><pre><code class="language-julia">using DickeModel.ClassicalDicke
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>ClassicalDicke · DickeModel.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script><link href="../assets/customcss.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">DickeModel.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">DickeModel.jl</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>ClassicalDicke</a><ul class="internal"><li><a class="tocitem" href="#Drawing-contours-of-the-available-phase-space"><span>Drawing contours of the available phase space</span></a></li><li><a class="tocitem" href="#Plotting-the-density-of-states"><span>Plotting the density of states</span></a></li><li><a class="tocitem" href="#Drawing-a-Poincaré-surface"><span>Drawing a Poincaré surface</span></a></li><li><a class="tocitem" href="#Drawing-a-Lyapunov-exponent-map"><span>Drawing a Lyapunov exponent map</span></a></li></ul></li><li><a class="tocitem" href="../DickeBCEExamples/">DickeBCE (Quantum Dicke)</a></li><li><a class="tocitem" href="../EnergyShellProjectionsExamples/">EnergyShellProjections</a></li><li><a class="tocitem" href="../TWAExamples/">TWA</a></li><li><a class="tocitem" href="../UPOsExamples/">UPOs</a></li><li><a class="tocitem" href="../ClassicalLMGExamples/">ClassicalLMG</a></li></ul></li><li><span class="tocitem">Documentation</span><ul><li><a class="tocitem" href="../ClassicalDicke/">ClassicalDicke</a></li><li><a class="tocitem" href="../DickeBCE/">DickeBCE</a></li><li><a class="tocitem" href="../EnergyShellProjections/">EnergyShellProjections</a></li><li><a class="tocitem" href="../TWA/">TWA</a></li><li><a class="tocitem" href="../UPOs/">UPOs</a></li><li><a class="tocitem" href="../ClassicalLMG/">ClassicalLMG</a></li><li><a class="tocitem" href="../ClassicalSystems/">ClassicalSystems</a></li><li><a class="tocitem" href="../PhaseSpaces/">PhaseSpaces</a></li></ul></li><li><a class="tocitem" href="../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>ClassicalDicke</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>ClassicalDicke</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/saulpila/DickeModel.jl/blob/master/docs/src/ClassicalDickeExamples.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Examples-for-ClassicalDicke"><a class="docs-heading-anchor" href="#Examples-for-ClassicalDicke">Examples for ClassicalDicke</a><a id="Examples-for-ClassicalDicke-1"></a><a class="docs-heading-anchor-permalink" href="#Examples-for-ClassicalDicke" title="Permalink"></a></h1><h2 id="Drawing-contours-of-the-available-phase-space"><a class="docs-heading-anchor" href="#Drawing-contours-of-the-available-phase-space">Drawing contours of the available phase space</a><a id="Drawing-contours-of-the-available-phase-space-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-contours-of-the-available-phase-space" title="Permalink"></a></h2><p>We may use the function <a href="../ClassicalDicke/#DickeModel.ClassicalDicke.minimum_ϵ_for"><code>ClassicalDicke.minimum_ϵ_for</code></a> to draw the contour of the available phase space in the variables <span>$(Q,P)$</span>.</p><pre><code class="language-julia">using DickeModel.ClassicalDicke
 using Plots
 system =  ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
 Qs = Ps = -2:0.01:2
 ϵgs = minimum_energy(system)
 contour(Qs, Ps,
         (Q,P) -&gt; minimum_ϵ_for(system, p=0, P=P, Q=Q),
-        levels=10, clim=(ϵgs,1), xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;)</code></pre><p><img src="../contourQP.svg" alt/></p><h2 id="Plotting-the-density-of-states"><a class="docs-heading-anchor" href="#Plotting-the-density-of-states">Plotting the density of states</a><a id="Plotting-the-density-of-states-1"></a><a class="docs-heading-anchor-permalink" href="#Plotting-the-density-of-states" title="Permalink"></a></h2><p>Here is a plot of the semiclassical density of states</p><pre><code class="language-julia">using DickeModel.ClassicalDicke
+        levels=10, clim=(ϵgs,1), xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;)</code></pre><p><img src="../contourQP.svg" alt/></p><h2 id="Plotting-the-density-of-states"><a class="docs-heading-anchor" href="#Plotting-the-density-of-states">Plotting the density of states</a><a id="Plotting-the-density-of-states-1"></a><a class="docs-heading-anchor-permalink" href="#Plotting-the-density-of-states" title="Permalink"></a></h2><p>Using <a href="../ClassicalDicke/#DickeModel.ClassicalDicke.density_of_states"><code>ClassicalDicke.density_of_states</code></a>, we plot the semiclassical  density of states originally calculated in Ref. <a href="../references/#Bastarrachea2014">[3]</a>.</p><pre><code class="language-julia">using DickeModel.ClassicalDicke
 using Plots
 system = ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
-ν(ϵ) = density_of_states(system, j=100, ϵ=ϵ)
+ν(ϵ) = density_of_states(system, ϵ; j=100)
 ϵgs = minimum_energy(system)
-plot(ν, ϵgs:0.01:2, xlabel=&quot;ϵ&quot;, ylabel=&quot;Density of States&quot;)</code></pre><p><img src="../density_of_states.svg" alt/></p><p>This is precisely the red line in Fig. A1. of Ref. <a href="../references/#Villasenor2020">[18]</a>.</p><h2 id="Drawing-a-Poincaré-surface"><a class="docs-heading-anchor" href="#Drawing-a-Poincaré-surface">Drawing a Poincaré surface</a><a id="Drawing-a-Poincaré-surface-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Poincaré-surface" title="Permalink"></a></h2><p>Here is a way to draw a <a href="https://en.wikipedia.org/wiki/Poincar%C3%A9_map">Poincaré surface</a> for the Dicke model. We use <a href="../ClassicalSystems/#DickeModel.ClassicalSystems.integrate"><code>ClassicalSystems.integrate</code></a> to integrate a bunch of initial conditions. Using the <a href="https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback">callback system of DifferentialEquations</a>, we save the points where <span>$p=0$</span>.</p><pre><code class="language-julia">using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
+plot(ν, ϵgs:0.01:2, xlabel=&quot;ϵ&quot;, ylabel=&quot;Density of States&quot;)</code></pre><p><img src="../density_of_states.svg" alt/></p><p>This is precisely the red line in Fig. A1. of Ref. <a href="../references/#Villasenor2020">[19]</a>.</p><h2 id="Drawing-a-Poincaré-surface"><a class="docs-heading-anchor" href="#Drawing-a-Poincaré-surface">Drawing a Poincaré surface</a><a id="Drawing-a-Poincaré-surface-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Poincaré-surface" title="Permalink"></a></h2><p>Using <a href="../ClassicalSystems/#DickeModel.ClassicalSystems.integrate-Tuple{DickeModel.ClassicalSystems.ClassicalSystem, AbstractVector{var&quot;#s25&quot;} where var&quot;#s25&quot;&lt;:Real, Real}"><code>ClassicalSystems.integrate</code></a>,  we may evolve initial conditions under the classical Dicke Hamiltonian. In this example we draw a <a href="https://en.wikipedia.org/wiki/Poincar%C3%A9_map">Poincaré surface</a> for the mixed regime Dicke model, where chaos and regularity coexist. We to integrate a bunch of initial conditions, and, using the <a href="https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback">callback system of DifferentialEquations</a>, we save the points where <span>$p=0$</span>.</p><pre><code class="language-julia">using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
 using Plots
 using DiffEqBase
 
@@ -30,19 +30,21 @@ callback=ContinuousCallback((x, t, _) -&gt; x[4], #when p=x[4] is 0,
     save; #execute the function save
     save_positions=(false,false), abstol=1e-3)
 ϵ = -1.35
-for Q in minimum_nonnegative_Q_for_ϵ(system,ϵ):0.02:maximum_Q_for_ϵ(system, ϵ) #for a bunch of initial Qs,
+
+# We evolve a bunch of initial conditions with different Q values:
+for Q in minimum_nonnegative_Q_for_ϵ(system,ϵ):0.02:maximum_Q_for_ϵ(system, ϵ)
         if minimum_ϵ_for(system, P=0, p=0, Q=Q) &gt; ϵ
             continue
         end
         initial_condition = Point(system, ϵ=ϵ, P=0, p=0, Q=Q)
-        integrate(system, u₀=initial_condition,
-            t=10000, callback=callback, save_everystep=false)
+        integrate(system, initial_condition, 10000,
+             callback=callback, save_everystep=false)
         scatter!(pts)
         empty!(pts)
 
 
 end
-mplot</code></pre><p><img src="../poincare_surface.png" alt/></p><h2 id="Drawing-a-Lyapunov-exponent-map"><a class="docs-heading-anchor" href="#Drawing-a-Lyapunov-exponent-map">Drawing a Lyapunov exponent map</a><a id="Drawing-a-Lyapunov-exponent-map-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Lyapunov-exponent-map" title="Permalink"></a></h2><p>Let us plot the Lyapunov exponents for the Poincaré map of the previous example.</p><pre><code class="language-julia">using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
+mplot</code></pre><p><img src="../poincare_surface.png" alt/></p><h2 id="Drawing-a-Lyapunov-exponent-map"><a class="docs-heading-anchor" href="#Drawing-a-Lyapunov-exponent-map">Drawing a Lyapunov exponent map</a><a id="Drawing-a-Lyapunov-exponent-map-1"></a><a class="docs-heading-anchor-permalink" href="#Drawing-a-Lyapunov-exponent-map" title="Permalink"></a></h2><p>Let us plot the Lyapunov exponents for the Poincaré map of the previous example. The code below is lengthy because it tries to compute as little data as possible. Computing Lyapunov exponents is expensive, because one needs to integrate the variational system. However, any two points in the same trajectory will share the same Lyapunov exponent,  so we may compute the Lyapunov exponent for an initial condition, and all other points that it passes through have the same one, so we do not need to compute it again.</p><p>This code generates a matrix in the plane <span>$(p = 0,\epsilon = \text{constant})$</span>,  and averages the Lyapunov exponent of all the trajectories that pass through each square in the matrix.</p><pre><code class="language-julia">using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
 using Plots
 using DiffEqBase
 
@@ -51,26 +53,36 @@ system = ClassicalDickeSystem(ω=0.8, γ=0.8, ω₀=1)
 n_points = 50 #making this greater will make a smoother plot,
               #but it may take time!
 
+#we calculate the bounds
 maxQ = maximum_Q_for_ϵ(system,ϵ)
 minQ = minimum_nonnegative_Q_for_ϵ(system,ϵ)
 maxP = maximum_P_for_ϵ(system,ϵ)
+
 Qs = range(minQ, maxQ, length = n_points)
 Ps = range(0, maxP, length = n_points)  #we only compute the top half of
                           #the plane, and later mirror it
 
 #this matrix will contain the average Lyapunov exponents of the n trajectories
-#that have passed through that square  or NaN if the point is outside of bounds
-#we make it shared so all workers can use it
-mat_av_lya = [if minimum_ϵ_for(system, P=P, p=0, Q=Q) &gt; ϵ
-            NaN else 0.0 end
-                for Q in Qs, P in Ps]
+#that have passed through that square  or NaN if the point is outside of the
+#available phase space.
+mat_av_lya = [
+        if minimum_ϵ_for(system, P=P, p=0, Q=Q) &gt; ϵ
+            NaN
+        else
+            0.0
+        end
+    for Q in Qs, P in Ps
+    ]
 
 #this matrix will contain the count of how many trajectories
 #have passed through that square.
 mat_counts =zeros(Int,length(Qs),length(Ps))
-pts = Tuple{Float64, Float64}[] #a list of points (Q,P) for temporary storage
+#a list of points (Q,P) to temporarily store the points through
+# which a given trajectory passes through.
+pts = Tuple{Float64, Float64}[]
 
-function save(state) #this function saves (Q,P) to pts if q = q₊ (and not q₋).
+#this function saves (Q,P) to pts if q = q₊ (and not q₋).
+function save(state)
     if ClassicalDicke.q_sign(system,state.u,ϵ) == +
         Q,q,P,p = state.u
         push!(pts, (Q,P))
@@ -93,7 +105,8 @@ end
 
 #we iterate over the matrix and the values of Q,P
 for ((Q,P),av_lyapunov,count) in zip(Iterators.product(Qs,Ps),mat_av_lya,mat_counts)
-    #if we are out of bounds or we have information on this Lyapunov exponent,
+    # if we are out of the available phase space or we
+    # already have one trajectory that has passed through this square
     if av_lyapunov===NaN || count &gt; 0
         continue #we skip
     end
@@ -103,7 +116,6 @@ for ((Q,P),av_lyapunov,count) in zip(Iterators.product(Qs,Ps),mat_av_lya,mat_cou
     empty!(pts)
     push!(pts,(Q,P))
     point  = ClassicalDicke.Point(system, Q=Q, P=P, p=0, ϵ=ϵ)
-
     λ = ClassicalSystems.lyapunov_exponent(system, point,
         #decreasing these numbers will produce more precise results but takes more time.
         tol = 1e-8,
@@ -113,10 +125,11 @@ for ((Q,P),av_lyapunov,count) in zip(Iterators.product(Qs,Ps),mat_av_lya,mat_cou
     for (mQ,mP) in pts
         #we save the Lyapunov into all of the squares that the trajectory visited.
         iQ,iP = index_of_subinterval(mQ,Qs),index_of_subinterval(abs(mP),Ps)
-        #if we are inside bounds
+        #if we are inside the available phase space
         if mat_av_lya[iQ,iP] !== NaN
             #we update the average
-            mat_av_lya[iQ,iP] = (mat_av_lya[iQ,iP]*mat_counts[iQ,iP] + λ)/(mat_counts[iQ,iP] + 1)
+            mat_av_lya[iQ,iP] = (mat_av_lya[iQ,iP]*mat_counts[iQ,iP] + λ) /
+                                (mat_counts[iQ,iP] + 1)
             mat_counts[iQ,iP] += 1 #we update the count
         end
     end
@@ -129,4 +142,4 @@ Ps=vcat(-Ps[end:-1:2], Ps) #update Ps with negative values
 heatmap(Qs, Ps, mat,
         xlabel=&quot;Q&quot;, ylabel=&quot;P&quot;,
         clim=(0.01,NaN), #Lyapunovs below 0.005 we take as 0
-        size=(550,500))</code></pre><p><img src="../lyapunov_map.svg" alt/></p><p>It looks very similar to the Poincaré map of the previous example! Notice how there are regular (black) and chaotic (colored) regions.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../PhaseSpaces/">« PhaseSpaces</a><a class="docs-footer-nextpage" href="../DickeBCEExamples/">DickeBCE (Quantum Dicke) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Saturday 17 July 2021 01:55">Saturday 17 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+        size=(550,500))</code></pre><p><img src="../lyapunov_map.svg" alt/></p><p>It looks very similar to the Poincaré map of the previous example! Notice how there are regular (black) and chaotic (colored) regions.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« DickeModel.jl</a><a class="docs-footer-nextpage" href="../DickeBCEExamples/">DickeBCE (Quantum Dicke) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.3 on <span class="colophon-date" title="Sunday 18 July 2021 02:39">Sunday 18 July 2021</span>. Using Julia version 1.6.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
