@@ -1,9 +1,9 @@
 module DickeBCE
 
-export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalization, coherent_state,
+export hamiltonian_operator, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalization, coherent_state,
     coherent_state!, coherent_overlap, eigenstate_parities, Wigner, evolve, WignerProjQP, WignerProjqp,
     factor_R_of_coherent_state, participation_ratio, random_state!, random_state, random_cₖ_generator,
-    survival_probability,dimension
+    survival_probability,dimension,density_of_states,energy_width_of_coherent_state
     import ..ClassicalSystems
     using LinearAlgebra
     using ProgressMeter
@@ -22,7 +22,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     
     """
     ```julia
-    mutable struct QuantumDickeSystem
+    mutable struct QuantumDickeSystem <: ClassicalDicke.DickeSystem
     ```
     This object represents the quantum Dicke model. It stores the parameters of
     the system, and it may be passed to multiple functions
@@ -33,17 +33,22 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
         j::Real,
         Nmax::Union{Integer,Nothing}=nothing)
     ```
-  
+    or [`DickeBCE.QuantumDickeSystem(;ω₀,ω,γ,j,Nmax)`](@ref DickeBCE.QuantumDickeSystem()).
+
+    Because this object subtypes [`ClassicalDicke.DickeSystem`](@ref), it may be passed
+    to any function that requires a `DickeSystem` or a [`ClassicalSystem`](@ref ClassicalSystems.ClassicalSystem),
+    and the underlying `classical_system` will be used.
     # Arguments
     - `classical_system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `j` is the value of ``j``. It must be a positive half-integer.
     - `Nmax - 1` is the maximum excitation of the modified bosonic sector in the efficient coherent
       basis (see [Bastarrachea2014PSa](@cite), [Bastarrachea2014PSb](@cite)). `Nmax` must be a positive integer. 
-      It may be omitted if there is a saved diagonalization. 
-      In that case, a call to [`diagonalization`](@ref DickeBCE.diagonalization) will populate this value with the 
-      greatest available in the saved cache.    
+      It may be omitted. In this case, you may use functions that do not require `Nmax`. Moreover, if 
+      you call [`diagonalization`](@ref DickeBCE.diagonalization) with a `system` that has `Nmax = nothing`, 
+      and there is a  diagonalization saved in disk, `diagonalization(system)` will load 
+      the eigenstates with the largest `Nmax` and will set the value of  `Nmax` in `system`.
     """
-    mutable struct QuantumDickeSystem
+    mutable struct QuantumDickeSystem <: ClassicalDicke.DickeSystem
        j::Real
        Nmax::Union{Integer,Nothing}
        classical_system::ClassicalDicke.ClassicalDickeSystem
@@ -62,6 +67,9 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
            return new(j,Nmax,classical_system)
        end
     end
+    function ClassicalSystems.parameters(system::QuantumDickeSystem)
+        return ClassicalSystems.parameters(system.classical_system)
+    end   
     """
     ```julia
     function QuantumDickeSystem(;ω₀,ω,γ,j,Nmax=nothing)
@@ -73,8 +81,9 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
         return QuantumDickeSystem(ClassicalDicke.ClassicalDickeSystem(ω₀=ω₀,ω=ω,γ=γ), j= j, Nmax=Nmax)
     end
     function Base.show(io::IO, qds::QuantumDickeSystem)
-        ω₀,ω,γ,j,Nmax=get_params(qds)
-        print(io,"QuantumDickeSystem(ω₀ = $ω₀, ω = $ω, γ = $γ, j = $j, Nmax = $Nmax)")
+        ω₀,ω,γ,j,Nmax=get_params(qds,need_Nmax=false)
+        
+        print(io,"QuantumDickeSystem(ω₀ = $ω₀, ω = $ω, γ = $γ, j = $j",if Nmax ==nothing "" else ", Nmax = $Nmax" end,")")
     end
     """
     ```julia
@@ -83,7 +92,10 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     Returns the integer ``(2j + 1)\\times N_\\text{max}``, which gives the dimension
     of the Hilbert space.
     """
-    dimension(system::QuantumDickeSystem) = Int(2*system.j +1)*system.Nmax
+    function dimension(system::QuantumDickeSystem) 
+        ω₀,ω,γ,j,Nmax=get_params(system)
+        return Int(2j +1)*Nmax
+    end
     ind(n,m,N,j)= Int(n)*Int(N+1)+Int(m+j) +1 #+1 because Julia counts from 1.
     function logfact(n::Real)::Float64
         if n==0
@@ -103,15 +115,15 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     function _sqrt_binomiallog(n::Real,k::Real)
         return (logfact(n)-logfact(k)-logfact(n-k))/2
     end
-    function get_params(system::QuantumDickeSystem;warning_on_NmaxNothing=true)
+    function get_params(system::QuantumDickeSystem;need_Nmax=true)
         j=system.j
         Nmax=system.Nmax 
-        ω₀,ω,γ =ClassicalSystems.parameters(system.classical_system)
+        ω₀,ω,γ =ClassicalSystems.parameters(system)
         if Nmax!==nothing
             Nmax=Int(Nmax)
         else
-            if warning_on_NmaxNothing
-                @warn "You did not pass Nmax and did not call diagonalization to load it from disk. Nmax is undetermined and this probably will cause an error below."
+            if need_Nmax
+                error("You did not pass Nmax to QuantumDickeSystem and did not call diagonalization to load it from disk. This call requires to know Nmax")
             end
         end
         return ω₀,ω,γ,j,Nmax
@@ -144,14 +156,14 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     end
     """
     ```julia
-    function eigenstate_parities(system::QuantumDickeSystem,eigenstates)
+    function eigenstate_parities(system::QuantumDickeSystem,eigenstates::AbstractMatrix{<:Number})
     ```
     Returns a vector of `-1`s and `1`s contaning the parities of all of the eigenstates.
     # Arguments
     - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref).
     - `eigenstates` is the matrix of eigenstates. (See  [`diagonalization`](@ref DickeBCE.diagonalization)).
     """
-    function eigenstate_parities(system::QuantumDickeSystem,eigenstates)
+    function eigenstate_parities(system::QuantumDickeSystem,eigenstates::AbstractMatrix{<:Number})
         Π=parity_operator(system)
         ΠE=Π*eigenstates
         return Int8[Integer(round(dot(view(ΠE,:,k),view(eigenstates,:,k)))) for k in 1:size(eigenstates)[2]]
@@ -167,22 +179,22 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     ```
     Returns a vector containing the eigenenergies of the system. 
     
-    This function is just shorthand for [`diagonalization`](@ref DickeBCE.diagonalization)`(system;only_eigenenergies = true, kargs...)`. 
+    This function is just shorthand for [`diagonalization`](@ref DickeBCE.diagonalization)`(system;kargs..., only_eigenenergies = true)`. 
     """
     function eigenenergies(system::QuantumDickeSystem;kargs...)
-        return diagonalization(system;only_eigenenergies=true,kargs...)
+        return diagonalization(system;kargs..., only_eigenenergies=true)
     end
     """
     ```julia
     function diagonalization(system::QuantumDickeSystem;
-            load_cache = true,
-            save_cache = true,
-            cache_folder = joinpath(homedir(),"dicke_diagonalizations"),
+            load_cache::Bool = true,
+            save_cache::Bool = true,
+            cache_folder::AbstractString = joinpath(homedir(),"dicke_diagonalizations"),
             maxϵ::Real = 5.0,
             onlyload::Union{AbstractVector{<:Integer},Nothing} = nothing,
-            only_eigenenergies = false,
+            only_eigenenergies::Bool = false,
             verbose::Bool = true,
-            converged_tolerance=1e-3)
+            converged_tolerance::Real = 1e-3)
     ```
     Diagonalizes the Dicke Hamiltonian up to a maximum energy `maxϵ`. The resulting eigenstates 
     are guaranteed to be converged, with a tolerance determined by `converged_tolerance`.
@@ -191,11 +203,13 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     `eigenenergies` is real vector containing the eigenenergies and `eigenstates` is a real matrix that
     contains the eigenstates as columns. 
     
-    If `load_cache = true` it will try to load saved diagonalizations from `cache_folder`.
-
+    If `load_cache = true` it will try to load saved diagonalizations from `cache_folder`. In the case that
+    `system` has `Nmax = nothing`, the diagonalization with the largest `Nmax` will be loaded, and `Nmax` 
+    will be set in `system`. 
 
     # Arguments
     - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref).
+    # Keyword arguments
     - `load_cache` is a boolean indicating whether to try to load from cache folder. Defaults to `true`.
     - `save_cache` determines if the results of a computed diagonalization are saved to the cache folder. Defaults to `true`.
     - `cache_folder` is the cache folder where diagonalizations are saved. Default is `%HOME%/dicke_diagonalizations`
@@ -210,16 +224,16 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
       The default value `1e-3` is usually the best.
     """
     function diagonalization(system::QuantumDickeSystem;
-            load_cache = true,
-            save_cache = true,
-            cache_folder = joinpath(homedir(),"dicke_diagonalizations"),
+            load_cache::Bool = true,
+            save_cache::Bool = true,
+            cache_folder::AbstractString = joinpath(homedir(),"dicke_diagonalizations"),
             maxϵ::Real = 5.0,
             onlyload::Union{AbstractVector{<:Integer},Nothing} = nothing,
-            only_eigenenergies = false,
+            only_eigenenergies::Bool = false,
             verbose::Bool = true,
-            converged_tolerance=1e-3)
+            converged_tolerance::Real = 1e-3)
         
-        ω₀,ω,γ,j,Nmax=get_params(system,warning_on_NmaxNothing=false)
+        ω₀,ω,γ,j,Nmax=get_params(system,need_Nmax=false)
         
         filename(ω₀,ω,γ,j,Nmax)="dicke_bce_ω₀=$(ω₀),ω=$(ω),γ=$(γ),j=$(j),Nmax=$(Nmax)"
         filelocation(ω₀,ω,γ,j,Nmax)=joinpath(cache_folder,filename(ω₀,ω,γ,j,Nmax))
@@ -268,7 +282,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
         end
 
 
-        Hq=hamiltonian(system)
+        Hq=hamiltonian_operator(system)
 
         if verbose
             @info "Diagonalizing..."
@@ -329,14 +343,14 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     end
     """
     ```julia
-    function hamiltonian(system::QuantumDickeSystem)
+    function hamiltonian_operator(system::QuantumDickeSystem)
     ```
     Returns a sparse matrix corresponding to the Dicke Hamiltonian (See Eq. (1) of [Pilatowsky2021NatCommun](@cite)) in the
     efficient coherent basis. (See Ref. [Bastarrachea2014PSa](@cite), [Bastarrachea2014PSb](@cite))
     # Arguments
     - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref).
     """
-    function hamiltonian(system::QuantumDickeSystem;_ignorediagonalterms=false)
+    function hamiltonian_operator(system::QuantumDickeSystem;_ignorediagonalterms::Bool = false)
         ω₀,ω,γ,j,Nmax=get_params(system)
         N=Int(2*j)
         G=2*γ/(ω*sqrt(N))
@@ -393,7 +407,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     """
     function Jz(system::QuantumDickeSystem)
         ω₀,ω,γ,j,Nmax=get_params(system)
-        return hamiltonian(QuantumDickeSystem(ClassicalDicke.ClassicalDickeSystem(ω₀=1,ω=1,γ=1),j=j,Nmax=Nmax),_ignorediagonalterms=true)
+        return hamiltonian_operator(QuantumDickeSystem(ClassicalDicke.ClassicalDickeSystem(ω₀=1,ω=1,γ=1),j=j,Nmax=Nmax),_ignorediagonalterms=true)
     end
     """
     ```julia
@@ -428,6 +442,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     of Eq. (19) of [Villasenor2020](@cite) is used.
     # Arguments
     - `state` should be a complex vector representing the state in the efficient coherent basis.
+    # Keyword arguments
     - `eigenstates` should be a matrix containing the eigenstates.
     - `eigenenergies` should be passed if `count_degeneracies` is  `true`. It is a list
       containing the eigenenergies.
@@ -473,6 +488,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     # Arguments
     - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref).
     - `x` is an array `[Q,q,P,p]` representing the center of the coherent state.
+    # Keyword arguments
     - `eigenstates` should be a matrix containing the eigenstates as columns.
     - `eigenenergies`  is a list containing the eigenenergies.
     - `state` is a complex vector representing the coherent state ``\\left | \\mathbf{x} \\right \\rangle``.
@@ -483,11 +499,10 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
             eigenstates::AbstractMatrix{<:Number},
             eigenenergies::AbstractVector{<:Real},
             state::AbstractVector{<:Number} = coherent_state(system,x))
-        systemC = system.classical_system
         ω₀,ω,γ,j,Nmax=get_params(system)
-        ϵ=ClassicalDicke.hamiltonian(systemC)(x)
-        σ=ClassicalDicke.energy_width_of_coherent_state(systemC, x; j)
-        ν(ϵ)=ClassicalDicke.density_of_states(systemC, ϵ; j)
+        ϵ=ClassicalDicke.hamiltonian(system)(x)
+        σ=energy_width_of_coherent_state(system, x)
+        ν(ϵ)=density_of_states(system, ϵ)
         n=Distributions.Normal(ϵ,σ)
         f=1/(2*sqrt(pi)*σ*j*ν(ϵ))
         
@@ -568,7 +583,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
         x::AbstractVector{<:Real};
         normwarning::Real=0.99,
         extra_phase::Complex=1.0+0im,
-        tol::Real=0.0)
+        chop::Real=0.0)
     ```
     Calls [`coherent_state!`](@ref) passing `data` as a new vector and returns the result.
     """
@@ -576,12 +591,12 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
         x::AbstractVector{<:Real};
         normwarning::Real=0.99,
         extra_phase::Complex=1.0+0im,
-        tol::Real=0.0)
+        chop::Real=0.0)
         
         ω₀,ω,γ,j,Nmax=get_params(system)
 
         data = zeros(Complex{Float64},Nmax*(Int(2*j)+1))
-        coherent_state!(system,x,data;normwarning=normwarning,extra_phase=extra_phase,tol=tol)
+        coherent_state!(system,x,data;normwarning=normwarning,extra_phase=extra_phase,chop=chop)
         return data
     end
     """
@@ -592,7 +607,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
                 normwarning=0.99,
                 add_state_to_data::Bool=false,
                 extra_phase::Complex=1.0+0im,
-                tol::Real=1e-6)
+                chop::Real=1e-6)
     ```
     This function computes the coefficients of a coherent state centered at 
     `x` in the BCE, and stores the result in `data`. (See Ref. [Villasenor2020](@cite))
@@ -610,10 +625,10 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
       without having to allocate that much memory.   
     - `extra_phase` is a complex number that multiplies the resulting state overall. 
       Defaults to `1`.
-    - `tol` is a numerical tolerance. If `tol=0`, then all the coefficients all computed.
-      However, if `ε = 1 -  tol > 0.0`, then some coefficients at the tail of the distribution (whose total squared norm does not exceed `ε`) will be treated as `0.0`. This allows to 
+    - `chop` is a numerical tolerance between 0 and 1. If `chop=0`, then all the coefficients all computed.
+      However, if `ε = 1 -  chop > 0.0`, then some coefficients at the tail of the distribution (whose total squared norm does not exceed `ε`) will be treated as `0.0`. This allows to 
       significantly reduce computation time, but introduces a numerical error of order `ε`. The default is `1e-6`.
-      See [this example](@ref exampletolhusimis) and Ref. [Pilatowsky2020Notes](@cite).
+      See [this example](@ref ExampleEfficientHusimiFunctions) and Ref. [Pilatowsky2020Notes](@cite).
     """
     coherent_state!(system::QuantumDickeSystem,
                 x::AbstractArray{<:Real,1},
@@ -621,9 +636,9 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
                 normwarning=0.99,
                 add_state_to_data::Bool=false,
                 extra_phase::Complex=1.0+0im,
-                tol::Real=1e-6)=
+                chop::Real=1e-6)=
         _coherent_overlap_or_coherent_state(system,x;
-                        datacache=data,tol=tol,normwarning=normwarning,add_state_to_data=add_state_to_data,extra_phase=extra_phase)
+                        datacache=data,chop=chop,normwarning=normwarning,add_state_to_data=add_state_to_data,extra_phase=extra_phase)
 
     function _Cohpart1(n,m,alpha,G)
         s=alpha+G*m
@@ -637,24 +652,70 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
         return a
     end
 
-    function qtlmin(dist,tol,mn)
+    function qtlmin(dist,chop,mn)
         vl=mn
         try
-            dt=Distributions.quantile(dist,tol)
+            dt=Distributions.quantile(dist,chop)
             vl=max(vl,dt)
         catch
         end
         return vl
     end
-    function qtlmax(dist,tol,mx)
+    function qtlmax(dist,chop,mx)
         vl=mx
         try
-            dt=Distributions.quantile(dist,tol)
+            dt=Distributions.quantile(dist,chop)
             vl=min(vl,dt)
         catch
         end
         return vl
     end
+    """
+    ```julia
+    function density_of_states(system::QuantumDickeSystem, ϵ::Real)
+    ```
+    Returns the semiclassical density of states (DoS) ``ν(ϵ)``, in units of ``1/ϵ``, as given by
+    Eq. (A1) of Ref. [Pilatowsky2021Identification](@cite). 
+    
+    This is computed by multiplying  the volume of the classical energy shell at ϵ
+     by ``(2\\pi \\hbar_\\text{eff})^2=(2 \\pi / j)^2`` (see 
+    [`ClassicalDicke.energy_shell_volume`](@ref)).
+        
+    # Arguments
+    - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref).
+    - `ϵ` is the scaled energy ``ϵ=E/j``
+
+    See [Plotting the semiclassical density of states](@ref) for an example.
+    """
+    function density_of_states(system::QuantumDickeSystem, ϵ::Real)
+        ω₀,ω,γ,j,_=get_params(system, need_Nmax=false)
+        ClassicalDicke.energy_shell_volume(system,ϵ)*(j/(2pi))^2
+    end
+    """
+    ```julia
+    function energy_width_of_coherent_state(system::QuantumDickeSystem,
+                                            x::AbstractVector{<:Real})
+    ```
+    Returns the energy width ``\\sigma`` of the coherent state ``\\left | \\mathbf{x}\\right \\rangle``, in units of ``\\epsilon``. This
+    quantity is given by ``\\sigma_D/j`` with ``\\sigma_D`` as in App. A of Ref. [Lerma2018](@cite).
+    
+    # Arguments
+    - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref).
+    - `x` is the coordinate ``\\mathbf{x}`` of the coherent state in the format `[Q,q,P,p]`.
+    """
+    function energy_width_of_coherent_state(system::QuantumDickeSystem,x::AbstractVector{<:Real})
+        ω₀,ω,γ,j,_=get_params(system, need_Nmax=false)
+        Q,q,P,p=x
+        θ=PhaseSpaces.θ_of_QP(Q,P)
+        ϕ=PhaseSpaces.ϕ_of_QP(Q,P)
+    
+        Ω₁=j*(ω^2*(q^2+p^2)/2+ω₀^2*sin(θ)^2/2 +2*γ^2*((sin( θ)^2*sin(ϕ)^2+cos(θ)^2)*q^2 + sin(θ)^2*cos(ϕ)^2) +2*γ*q*(ω*cos(ϕ) + ω₀*cos(θ)*cos(ϕ))*sin(θ))
+        #note that the sign of the third term is flipped with respect to Lerma2018, because they use cosθ = jz and we use cosθ = - jz.
+    
+        Ω₂=γ^2*(sin(θ)^2*sin(ϕ)^2 + cos(θ)^2)
+        return sqrt(Ω₁ + Ω₂)/j
+    end
+    
     """
     ```julia
     function husimi_of_coherent(system::QuantumDickeSystem,
@@ -668,7 +729,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     - `x` and `y` are vectors in the form `[Q, q, P, p]`.
     """
     function husimi_of_coherent(system::QuantumDickeSystem,x::AbstractArray{<:Real,1},y::AbstractArray{<:Real,1})
-        ω₀,ω,γ,j,Nmax=get_params(system)
+        ω₀,ω,γ,j,Nmax=get_params(system,need_Nmax=false)
         Q1,q1,P1,p1=x
         Q2,q2,P2,p2=y
         return exp(-(j/2)*((q1-q2)^2 + (p1-p2)^2))*cos(PhaseSpaces.arc_between_QP(Q1,P1,Q2,P2)/2)^(4j)
@@ -679,7 +740,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     function coherent_overlap(system::QuantumDickeSystem,
         x::AbstractVector{<:Real},
         state::AbstractVector{<:Number};
-        tol::Real=1e-6,
+        chop::Real=1e-6,
         normwarning::Real=0.99,
         datacache::Union{AbstractArray{Complex{Float64},1},Nothing}=nothing)
     ```
@@ -690,11 +751,11 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     - `x` is a vector in the form `[Q, q, P, p]`.
     - `state` is a vector in the BCE.
     # Keyword arguments
-    - `tol` is a numerical tolerance. If `tol=0`, then all the products of coefficients are computed.
-      However, if `ε = 1 -  tol > 0.0`, then some coefficients of the coherent state at the tail of the distribution  (whose total squared norm does not exceed `ε`)
+    - `chop` is a numerical tolerance between 0 and 1. If `chop = 0`, then all the products of coefficients are computed.
+      However, if `ε = 1 -  chop > 0.0`, then some coefficients of the coherent state at the tail of the distribution  (whose total squared norm does not exceed `ε`)
       will be treated as `0.0`. This allows to 
       significantly reduce computation time, but introduces a numerical error of order `ε`. The default is `1e-6`.
-      See [this example](@ref exampletolhusimis)  and Ref. [Pilatowsky2020Notes](@cite).
+      See [this example](@ref ExampleEfficientHusimiFunctions)  and Ref. [Pilatowsky2020Notes](@cite).
     - `normwarning` is a tolerance (defaults to 0.99). If the norm of the coherent  state is below this number, a warning will be thrown. 
       This usually happens if Nmax is too small for the energy regime you are working on.
     - `datacache` in an array where to store the result, or `nothing` for the result to be returned. 
@@ -702,20 +763,20 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     function coherent_overlap(system::QuantumDickeSystem,
         x::AbstractVector{<:Real},
         state::AbstractVector{<:Number};
-        tol::Real=1e-6,
+        chop::Real=1e-6,
         normwarning::Real=0.99,
         datacache::Union{AbstractVector{<:Complex},Nothing}=nothing)
         if datacache===nothing
             datacache=onelistcache
         end
-        return _coherent_overlap(system,x,state;datalength=1,datacache=datacache,tol=tol,normwarning=normwarning)[1]
+        return _coherent_overlap(system,x,state;datalength=1,datacache=datacache,chop=chop,normwarning=normwarning)[1]
     end
     """
     ```julia
     function coherent_overlap(system::QuantumDickeSystem,
         x::AbstractVector{<:Real},
         states::AbstractMatrix{<:Number};
-        tol::Real=1e-6,
+        chop::Real=1e-6,
         normwarning::Real=0.99,
         datacache::Union{AbstractVector{<:Complex},Nothing}=nothing)
     ```
@@ -730,18 +791,18 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     function coherent_overlap(system::QuantumDickeSystem,
         x::AbstractVector{<:Real},
         states::AbstractMatrix{<:Number};
-        tol::Real=1e-6,
+        chop::Real=1e-6,
         normwarning::Real=0.99,
         datacache::Union{AbstractVector{<:Complex},Nothing}=nothing)
         d=size(states)[2]
         if datacache===nothing
             datacache=zeros(Complex{Float64},d)
         end
-        return _coherent_overlap(system,x,states;datacache=datacache,datalength=d,tol=tol,normwarning=normwarning)
+        return _coherent_overlap(system,x,states;datacache=datacache,datalength=d,chop=chop,normwarning=normwarning)
     end
     #if you pass estados it calculates overlap with coherent, else  coefficients of coherent.
     function _coherent_overlap_or_coherent_state(system::QuantumDickeSystem,punto::AbstractArray{<:Real,1};
-                        datacache,datalength=nothing,tol=1e-6,normwarning=0.99,
+                        datacache,datalength=nothing,chop=1e-6,normwarning=0.99,
                         estados::Union{AbstractArray{<:Number,1},AbstractArray{<:Number,2},Nothing}=nothing,add_state_to_data=false,extra_phase::Complex=1.0+0im)
         #@fastmath begin
             if !add_state_to_data
@@ -764,22 +825,22 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
             w=(1+z)/(1-z)
             part0=-abs2(alpha)/2 +j*log(w/(1+abs2(w)))
 
-            if tol==0
+            if chop==0
                mmin=-j
                mmax=j
             else
                 atomicDist=Distributions.Binomial(N,abs2(w)/(1+abs2(w)))
-                mmin=qtlmin(atomicDist,tol/4,0)-j
-                mmax=qtlmax(atomicDist,1-tol/4,N)-j
+                mmin=qtlmin(atomicDist,chop/4,0)-j
+                mmax=qtlmax(atomicDist,1-chop/4,N)-j
             end
             for m in mmin:mmax
             #for m in -j:j
                 part2m=part0+_Cohpart2(m,N,j,w,alpha,G)
-                if tol==0
+                if chop==0
                     nmin=0
                     nmax=Nmax-1
                 else
-                    efftol=tol/((mmax-mmin+1) *Distributions.pdf(atomicDist,m+j))
+                    efftol=chop/((mmax-mmin+1) *Distributions.pdf(atomicDist,m+j))
                     d=Distributions.Poisson(abs(G*m+alpha)^2)
                     nmin= qtlmin(d,efftol/4,0)
                     nmax=qtlmax(d,1-efftol/4,Nmax-1)
@@ -808,11 +869,11 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
     estados::Union{AbstractArray{<:Number,1},AbstractArray{<:Number,2}};
     datacache,
     datalength,
-    tol=1e-6,
+    chop=1e-6,
     normwarning=0.99) =_coherent_overlap_or_coherent_state(system,punto;
                                                         datacache=datacache,
                                                         datalength=datalength,
-                                                        tol=tol,
+                                                        chop=chop,
                                                         estados=estados,
                                                         normwarning=normwarning)
     """
@@ -1226,10 +1287,8 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
                                 end,
                                 divide_by_DoS::Bool=true)
 
-        ω₀,ω,γ,j,Nmax=get_params(system)
-        systemC = system.classical_system
         ρ(ϵ)=Distributions.pdf(envelope,ϵ)
-        ν(ϵ)=ClassicalDicke.density_of_states(systemC, ϵ; j)
+        ν(ϵ)=density_of_states(system, ϵ)
         rₖ()=Distributions.rand(rₖ_distribution)
         rphase()=if phases==true || phases ==:complex
             exp(im*Random.rand()*2*pi)
@@ -1355,7 +1414,7 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
         ϵ::Real,
         N::Integer,
         dt::Real=3,
-        tol::Real=1e-6,
+        chop::Real=1e-6,
         cachedata::Union{AbstractVector{<:Complex},Nothing}=nothing)
     ```
     Samples `N` points from the energy shell at `ϵ` using [`ClassicalDicke.classical_path_random_sampler`](@ref ClassicalDicke.classical_path_random_sampler),
@@ -1366,24 +1425,22 @@ export hamiltonian, husimi, husimi_of_coherent, QuantumDickeSystem, diagonalizat
         ϵ::Real,
         N::Integer,
         dt::Real=3,
-        tol::Real=1e-6,
+        chop::Real=1e-6,
         cachedata::Union{AbstractVector{<:Complex},Nothing}=nothing)
         
-        systemC = system.classical_system
-        ω₀,ω,γ,j,Nmax=get_params(system)
 
         if cachedata===nothing
-            cachedata=zeros(Complex,(Int(2j)+1)*(Nmax))
+            cachedata=zeros(Complex,dimension(system))
         end
         cachedata.=0.0im
-        s=ClassicalDicke.classical_path_random_sampler(systemC,ϵ=ϵ,dt=dt)
+        s=ClassicalDicke.classical_path_random_sampler(system,ϵ=ϵ,dt=dt)
         for i in 1:N
             θ=rand()*2*π
             p=s()
-            coherent_state!(system,p,cachedata,extra_phase=exp(im*θ),tol=tol,add_state_to_data=true)
+            coherent_state!(system,p,cachedata,extra_phase=exp(im*θ),chop=chop,add_state_to_data=true)
         end
         cachedata./=norm(cachedata)
         return cachedata
      end
 end
-     
+

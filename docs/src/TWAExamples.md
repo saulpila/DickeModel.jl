@@ -3,6 +3,8 @@
 ```@setup examples
 push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
+cache_fold_name="./diags"
+use_current_dir_for_diags=on_github
 using DickeModel
 ```
 ## Classical evolution of coherent states
@@ -34,7 +36,7 @@ of all the available workers.
     is necessary to load the module `DickeModel` in all workers. You will get errors if you omit it.
     
 For our first example, let us consider the Wigner function of a coherent state,
-evolve it classically using the truncated Wigner approximation (see Ref. [Pilatowsky2020](@cite)), and then look at 
+evolve it classically using the truncated Wigner approximation (TWA) (see Refs. [Villasenor2020](@cite), [Pilatowsky2020](@cite)), and then look at 
 the expected value of the [Weyl symbol](https://en.wikipedia.org/wiki/Wigner%E2%80%93Weyl_transform#The_inverse_map) 
 of the observable ``\hat{j}_z=\hat{J}_z/j`` in time with 
 [`TWA.average`](@ref). Note the usage of [`Weyl.Jz`](@ref DickeModel.TWA.Weyl.Jz).
@@ -96,8 +98,8 @@ distribution in the plane ``q,p``.
 @info "Starting example: TWA qp"
 ```
 ```@example examples
-qs=-4.3:0.02:4.3
-ps=-2.4:0.02:2.4
+qs = -4.3:0.02:4.3
+ps = -2.4:0.02:2.4
 if !on_github  qs=-4.2:0.5:4.2;ps=-2.4:0.5:2.4 end #hide
 N = 50000
 if !on_github N=200 end #hide
@@ -153,7 +155,11 @@ animate the evolution (with a little help from the wonderful [`@animate` from Pl
 @info "Starting example: TWA qp animation"
 ```
 ```@example examples
-N = 1000000
+N = 200000
+qs = -4.3:0.04:4.3
+ps = -2.4:0.04:2.4
+if !on_github  qs=-4.2:0.5:4.2;ps=-2.4:0.5:2.4 end #hide
+
 times = 0:0.1:40
 if !on_github N=200 end #hide
 if !on_github times=0:1 end #hide
@@ -166,9 +172,8 @@ matrices = calculate_distribution(system;
     xs = qs, 
     ys = ps, 
     ts = times, 
-    animate = true, 
     show_progress = false, #hide
-    maxNBatch = 200000)
+    animate = true)
 animation=@animate for mat in matrices
     heatmap(qs, ps, mat,
         color = cgrad(:gist_heat, rev=true), size=(600,600), 
@@ -193,6 +198,96 @@ nothing; #hide
     that are calculated in batch in each  worker. Between batches, data is flushed to the main worker, which takes time, but liberates RAM. 
     If generating the animation is filling up your RAM, try to decrease `maxNBatch`.
     
+
+## [TWA vs exact quantum evolution](@id TWAvsQuantum)
+Let us compare the evolution of a quantum state with that given by the TWA. 
+
+We select a point in the phase space and load
+the Wigner function of a coherent state centered at that point using [`TWA.coherent_Wigner_HWxSU2`](@ref TWA.coherent_Wigner_HWxSU2)
+```@setup examples
+@info "Starting example: Quantum vs TWA"
+```
+```@example examples
+using Plots
+using DickeModel.TWA
+using DickeModel.DickeBCE, DickeModel.ClassicalDicke
+using LinearAlgebra
+j = 30
+system = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j = j, Nmax=120)
+if false #hide
+eigenenergies,eigenstates = diagonalization(system) 
+end #hide
+if !use_current_dir_for_diags #hide
+eigenenergies,eigenstates =  diagonalization(system,verbose=false) #hide
+else #hide
+eigenenergies,eigenstates =  diagonalization(system, cache_folder=cache_fold_name,verbose=false)  #hide
+end #hide
+
+x = Point(system, Q=1.75, P=0, p=0, ϵ=-0.5)
+coh_state=coherent_state(system, x)
+W = coherent_Wigner_HWxSU2(x,j=j)
+nothing #hide
+```
+
+First, we compare the expectation value of the observable ``\hat{J}_z^2``.
+We load its Weyl symbol using [`Weyl.Jz²(j)`](@ref DickeModel.TWA.Weyl.Jz²), and its
+matrix form in the BCE using [`DickeBCE.Jz(system)`](@ref DickeModel.TWA.Weyl.Jz²)`^2`.
+```@example examples
+ts= 0:0.05:40
+evolution = evolve(ts, coh_state, 
+                eigenstates=eigenstates,
+                eigenenergies=eigenenergies);
+Jz²=DickeBCE.Jz(system)^2
+
+               #〈 v｜Jz²｜v 〉for each column v in evolution
+exvals = [real(dot(v, Jz² ,v)) for v in eachcol(evolution)]
+
+N=20000
+if !on_github N=1000 end #hide
+TWAJz2 = TWA.average(system,
+                 distribution = W,
+                 show_progress=false, #hide
+                 observable = Weyl.Jz²(j), 
+                 ts = ts,
+                 N = N)
+
+plot(ts, [exvals TWAJz2], 
+    size=(700,350), label=["Quantum" "TWA"],
+    left_margin=2Plots.mm,
+    xlabel = "time", ylabel="Jz²")
+savefig("Jz2_QvsTWA.svg");nothing #hide
+```
+![](Jz2_QvsTWA.svg)
+
+Now let us take a look at the survival probability (see Ref. [Villasenor2020](@cite)).
+We use the function [`DickeBCE.survival_probability`](@ref) to compute the exact
+survival probability, and [`TWA.survival_probability`](@ref) gives us the result from
+the TWA.
+```@example examples
+ts=exp10.(-2:0.01:3)
+
+N=20000 # Higher values reduce numerical noise at the cost of speed
+if !on_github N=1000 end #hide
+classical_SP = TWA.survival_probability(
+    system; 
+    distribution = W,
+    show_progress=false, #hide
+    N=N, ts=ts
+)
+quantum_SP = DickeBCE.survival_probability(
+    ts,
+    state=coh_state, 
+    eigenstates=eigenstates, 
+    eigenenergies=eigenenergies
+)
+
+plot(ts, [quantum_SP classical_SP], 
+    yscale=:log10, xscale=:log10, 
+    ylim=(1e-4,1), label=["Quantum" "TWA"], 
+    xlabel="time", ylabel="Survival probability")
+savefig("SP_QvsTWA.svg");nothing #hide
+```
+![](SP_QvsTWA.svg)
 
 ## Fidelity out-of-time order correlator (FOTOC)
 
@@ -244,7 +339,7 @@ savefig("FOTOC_TWA.svg");nothing #hide
 
 ## [Energy profiles of a coherent state](@id semiclassicalLDoS)
 We have a semiclassical formula for the energy width of a coherent state, given in App. A of Ref. [Lerma2018](@cite),
-and implemented in [`ClassicalDicke.energy_width_of_coherent_state`](@ref). Let's check
+and implemented in [`DickeBCE.energy_width_of_coherent_state`](@ref). Let's check
 this formula against the semiclassical local density of states given by Eq. (E.3) of Ref. [Villasenor2020](@cite).
 ```@setup examples
 @info "Starting example: Semiclassical LDoS"
@@ -253,18 +348,19 @@ this formula against the semiclassical local density of states given by Eq. (E.3
 using DickeModel.ClassicalDicke
 using DickeModel.ClassicalSystems
 using DickeModel.TWA
+using DickeModel.DickeBCE
 using Distributions
 using Plots
-system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
+j = 1000
+system = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j = j)
 
 ts = 0:0.1:50
-j = 1000
 ϵₓ = -0.5
 x = Point(system, Q=-1, P=0, p=0, ϵ=ϵₓ)
 W = coherent_Wigner_HWxSU2(x, j=j)
-N = 1000000
+N = 500000
 
-ϵ_binsize = 0.01
+ϵ_binsize = 0.02
 if !on_github N=1000 end #hide
 if !on_github ϵ_binsize=0.1 end #hide
 
@@ -276,7 +372,7 @@ if !on_github ϵ_binsize=0.1 end #hide
     x = ClassicalDicke.hamiltonian(system), 
     xs = ϵs)'
 ρ /= sum(ρ)*ϵ_binsize #normalization
-σₓ = energy_width_of_coherent_state(system, x; j=j)
+σₓ = energy_width_of_coherent_state(system, x)
 gaussian=Distributions.Normal(ϵₓ, σₓ)
 
 plot(ϵs,ρ, label="∫ w(x) δ(ϵ - h(x)) dx")

@@ -24,20 +24,21 @@ export PO,search_in_interval,approximate_period,
     ```julia
     po = PO(system, u, T)
     ```
-    where `system` is an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref),
+    where `system` is an instance of [`ClassicalDicke.DickeSystem`](@ref),
     `u` is a real vector of an initial condition in the form `[Q,q,P,p]`, and `T`
     is a real number representing the period. You can retrieve this values using
     `po.system`, `po.u`, and `po.T`.
     """
-    struct PO
-        system::ClassicalDickeSystem
+    struct PO{System <: DickeSystem}
+        system::System
         u::Vector{Float64}
         T::Real
-        PO(system::ClassicalDickeSystem,
-            u::AbstractVector{<:Real},
-            T::Real)= new(system,Float64.(u),T)
+        PO{System}(system::System, u::AbstractVector{<:Real},
+            T::Real) where {System<:DickeSystem} = new(system,Float64.(u),T)
     end
-
+    PO(system::System, u::AbstractVector{<:Real},
+        T::Real) where {System<:DickeSystem} = PO{System}(system,u,T)
+        
     function Base.show(io::IO, m::PO)
          print(io,string("PO @ u=",m.u,", T=", m.T))
     end
@@ -87,12 +88,12 @@ export PO,search_in_interval,approximate_period,
     end
     """
     ```julia
-    function PO(system::ClassicalDickeSystem, u::AbstractVector{<:Real})
+    function PO(system::DickeSystem, u::AbstractVector{<:Real})
     ```
     Generates a [`PO`](@ref), given a periodic condition `u = [Q,q,P,p]`, where 
     the period is calculated using [`approximate_period(system,u,bound=1e-2)`](@ref).
     """
-    PO(system::ClassicalDickeSystem,u::AbstractVector{<:Real})=PO(system,u,approximate_period(system,u,bound=1e-2))
+    PO(system::DickeSystem,u::AbstractVector{<:Real})=PO(system,u,approximate_period(system,u,bound=1e-2))
     
     """
     ```julia
@@ -248,7 +249,7 @@ export PO,search_in_interval,approximate_period,
     
     """
     ```julia
-    function approximate_period(system::ClassicalDickeSystem,
+    function approximate_period(system::DickeSystem,
         u₀::AbstractVector{<:Real};
         bound::Real = 0.1,
         tol::Real = 1e-8,
@@ -260,7 +261,7 @@ export PO,search_in_interval,approximate_period,
     to approximate the period of an *almost* periodic condition `u₀`. The maximum time 
     of integration is `10000`.
     # Arguments
-    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `system` should be an instance of [`ClassicalDicke.DickeSystem`](@ref).
     - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model.
     # Keyword arguments
     - `bound` is a positive real number indicating how close does the evolution has 
@@ -270,7 +271,7 @@ export PO,search_in_interval,approximate_period,
       before aborting. Defaults to `Inf` (no maximum).
     - `verbose` is a boolean indicating whether to log information messages. Defaults to `true`.
     """
-    function approximate_period(system::ClassicalDickeSystem,
+    function approximate_period(system::DickeSystem,
         u₀::AbstractVector{<:Real};
         bound::Real = 0.1,
         tol::Real = 1e-8,
@@ -307,7 +308,7 @@ export PO,search_in_interval,approximate_period,
 
     end
 
-    function monodromy_method_step_constant_period(system::ClassicalDickeSystem,
+    function monodromy_method_step_constant_period(system::DickeSystem,
         u₀::AbstractVector{<:Real},
         T::Real;
         tol::Real=1e-12)
@@ -315,14 +316,14 @@ export PO,search_in_interval,approximate_period,
         u₁,M=ClassicalSystems.integrate(system,u₀,T;save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
         return u₀-(M-Id)^-1*(u₁-u₀),norm(u₁-u₀)
     end
-    function hamiltonian_gradient(system::ClassicalDickeSystem,u::AbstractVector{<:Real})
+    function hamiltonian_gradient(system::DickeSystem,u::AbstractVector{<:Real})
         Fu₁=Float64[0,0,0,0]
         ClassicalSystems.step(system)(Fu₁,u,[ClassicalSystems.parameters(system);1.0],1.0)
         gradH=[-Fu₁[3],-Fu₁[4],Fu₁[1],Fu₁[2]]
         return gradH
     end
 
-    function monodromy_method_step_constant_energy(system::ClassicalDickeSystem,u₀::AbstractVector{<:Real},T::Real;tol::Real=1e-12)
+    function monodromy_method_step_constant_energy(system::DickeSystem,u₀::AbstractVector{<:Real},T::Real;tol::Real=1e-12)
         u₁,M=ClassicalSystems.integrate(system,u₀,T;save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
         gradH=hamiltonian_gradient(system,u₁)
         ξ=Float64[0,0,0,1]
@@ -339,7 +340,7 @@ export PO,search_in_interval,approximate_period,
 
     """
     ```julia
-    function monodromy_method_constant_period(system::ClassicalDickeSystem,
+    function monodromy_method_constant_period(system::DickeSystem,
         u₀::AbstractVector{<:Real},
         T::Real;
         maxiters::Integer=100,
@@ -353,7 +354,7 @@ export PO,search_in_interval,approximate_period,
     vary `T`, use [`monodromy_method_constant_energy`](@ref) instead.
     
     # Arguments
-    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `system` should be an instance of [`ClassicalDicke.DickeSystem`](@ref).
     - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model, which is used 
       as the starting point to find an orbit.
     - `T` is a positive real number, indicating the desired period.
@@ -366,7 +367,7 @@ export PO,search_in_interval,approximate_period,
     - `inttol` is the tolerance to be passed to [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)). Default is
       `tol/10`.
     """
-    function monodromy_method_constant_period(system::ClassicalDickeSystem,
+    function monodromy_method_constant_period(system::DickeSystem,
         u₀::AbstractVector{<:Real},
         T::Real;
         maxiters::Integer=100,
@@ -387,7 +388,7 @@ export PO,search_in_interval,approximate_period,
     end
     """
     ```julia
-    function monodromy_method_constant_energy(system::ClassicalDickeSystem,
+    function monodromy_method_constant_energy(system::DickeSystem,
         u₀::AbstractVector{<:Real},
         T::Real;
         maxiters::Integer=100,
@@ -401,7 +402,7 @@ export PO,search_in_interval,approximate_period,
     Hamiltonian gradient. The algorithm is described in App. A, section A.1. of Ref. [Pilatowsky2021](@cite).
     
     # Arguments
-    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `system` should be an instance of [`ClassicalDicke.DickeSystem`](@ref).
     - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model, which is used 
       as the starting point to find an orbit.
     - `T` is a positive real number, which is used as the starting point to find an orbit.
@@ -418,7 +419,7 @@ export PO,search_in_interval,approximate_period,
       is projected back to the energy shell between each iteration. This allows energy to be truly
       conserved, however, it makes the algorithm more unstable. The default is `true`. 
     """
-    function monodromy_method_constant_energy(system::ClassicalDickeSystem,
+    function monodromy_method_constant_energy(system::DickeSystem,
         u₀::AbstractVector{<:Real},
         T::Real;
         maxiters::Integer=100,
@@ -450,20 +451,20 @@ export PO,search_in_interval,approximate_period,
     
     """
     ```julia
-    function find_p_zero(system::ClassicalDickeSystem,
+    function find_p_zero(system::DickeSystem,
         u₀::AbstractVector{<:Real};
         tol::Real=1e-6,
         negative::Bool=false)
     ```
     Evolves `u₀` until it crosses the ``p=0`` plane from negative to positive and returns the result.
     # Arguments
-    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    - `system` should be an instance of [`ClassicalDicke.DickeSystem`](@ref).
     - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model.
     # Keyword arguments
     - `tol` is the numerical tolerance.
     - If `negative` is `true`, then the crossing is from positive to negative. Default is `false`.
     """
-    function find_p_zero(system::ClassicalDickeSystem,
+    function find_p_zero(system::DickeSystem,
         u₀::AbstractVector{<:Real};
         tol::Real=1e-6,
         negative::Bool=false)
@@ -795,18 +796,18 @@ export PO,search_in_interval,approximate_period,
     end
     """
     ```julia
-    function family_A(system::ClassicalDickeSystem;kargs...)
+    function family_A(system::DickeSystem;kargs...)
     ```
     Returns a function `ϵ -> po` that returns a PO from family ``\\mathcal{A}`` of Ref. [Pilatowsky2021](@cite). This is done
     by passing the ground state fixed point with the positive normal frequency as period to [`follow_PO_family_from_energy`](@ref).
     
     # Arguments
-    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref ClassicalDicke.ClassicalDickeSystem). 
+    - `system` should be an instance of [`ClassicalDicke.DickeSystem`](@ref ClassicalDicke.DickeSystem). 
       The system must be in the supperradiant regime. 
     # Keyword arguments
     - `kargs...` are redirected to [`follow_PO_family_from_energy`](@ref)
     """
-    family_A(system::ClassicalDickeSystem;kargs...)=follow_PO_family_from_energy(PO(system,
+    family_A(system::DickeSystem;kargs...)=follow_PO_family_from_energy(PO(system,
         ClassicalDicke.minimum_energy_point(system,+),2*pi/ClassicalDicke.normal_frequency(system,+));
         tol=1e-8,
         correct_energy =false, #for some reason, the algorithm with correct_energy=true crashes at energy -1.4 for family_A...
@@ -814,18 +815,18 @@ export PO,search_in_interval,approximate_period,
         kargs...)
     """
     ```julia
-    function family_B(system::ClassicalDickeSystem;kargs...)
+    function family_B(system::DickeSystem;kargs...)
     ```
     Returns a function `ϵ -> po` that returns a PO from family ``\\mathcal{B}`` of Ref. [Pilatowsky2021](@cite). This is done
     by passing the ground state fixed point with the negative normal frequency as period to [`follow_PO_family_from_energy`](@ref).
     
     # Arguments
-    - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref ClassicalDicke.ClassicalDickeSystem). 
+    - `system` should be an instance of [`ClassicalDicke.DickeSystem`](@ref ClassicalDicke.DickeSystem). 
       The system must be in the supperradiant regime. 
     # Keyword arguments
     - `kargs...` are redirected to [`follow_PO_family_from_energy`](@ref)
     """
-    family_B(system::ClassicalDickeSystem;kargs...)=follow_PO_family_from_energy(PO(system,ClassicalDicke.minimum_energy_point(system,+),2*pi/ClassicalDicke.normal_frequency(system,-));
+    family_B(system::DickeSystem;kargs...)=follow_PO_family_from_energy(PO(system,ClassicalDicke.minimum_energy_point(system,+),2*pi/ClassicalDicke.normal_frequency(system,-));
         tol=1e-8,energytol=1e-3,kargs...)
 
     """
@@ -878,27 +879,26 @@ export PO,search_in_interval,approximate_period,
 
     """
     ```julia
-    function overlap_of_tube_with_homogenous_state(system::DickeBCE.QuantumDickeSystem,
-        po::PO;
-        time_integral_tolerance::Real=1e-7,
-        phase_space_integral_resolution::Real=0.1)
+    function overlap_of_tube_with_homogenous_state(po::PO{DickeBCE.QuantumDickeSystem};
+                                            time_integral_tolerance::Real=1e-7,
+                                            phase_space_integral_resolution::Real=0.1)
     ```
     Returns the overlap ``\\text{tr}(\\hat{\\rho}_\\epsilon \\hat{\\rho}_{\\mathcal{O}} )``
     of a tubular state ``\\hat{\\rho}_{\\mathcal{O}}`` around the periodic orbit ``\\mathcal{O}=`` `po`, (Eq. (15) of Ref. [Pilatowsky2021](@cite)) 
     with a totally delocalized state ``\\hat{\\rho}_\\epsilon`` (Eq. (16) of Ref. [Pilatowsky2021](@cite)).
     # Arguments
-    - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref). 
-    - `po` should be an instance of [`PO`](@ref). 
+    - `po` should be an instance of [`PO`](@ref). The system passed to create `po` 
+      should have been a [`QuantumDickeSystem`](@ref DickeBCE.QuantumDickeSystem).
     # Keyword arguments
     - `time_integral_tolerance` is the numerical tolerance for the integral in Eq. (15) of Ref. [Pilatowsky2021](@cite). Default is `1e-7`.
     - `phase_space_integral_resolution` is the phase space resolution for the integral in Eq. (16) of Ref. [Pilatowsky2021](@cite), that is, `res` in
       [`EnergyShellProjections.energy_shell_average`](@ref). Default is `0.1`.
     """
-    function overlap_of_tube_with_homogenous_state(system::DickeBCE.QuantumDickeSystem,
-        po::PO;
+    function overlap_of_tube_with_homogenous_state(po::PO{DickeBCE.QuantumDickeSystem};
         time_integral_tolerance::Real=1e-7,
         phase_space_integral_resolution::Real=0.1)
         
+        system=po.system
         orbit=integrate(po,tol=time_integral_tolerance)
         ∫dtHtx(x)=average_over_PO(orbit,u-> DickeBCE.husimi_of_coherent(system,u,x))
         res=phase_space_integral_resolution
@@ -914,27 +914,31 @@ export PO,search_in_interval,approximate_period,
     end
     """
     ```julia
-    function scarring_measure(system::DickeBCE.QuantumDickeSystem,
-        quantum_state::AbstractVector{<:Number},
-        po::PO;Htol::Real=1e-3,kargs...)
+    function scarring_measure(
+        po::PO{DickeBCE.QuantumDickeSystem},
+        quantum_state::AbstractVector{<:Number};
+        chop::Real=1e-3,
+        kargs...)
     ```
     Returns the scarring measure ``\\mathcal{P}(\\mathcal{O},\\hat{\\rho})`` as defined in Eq. (17) of Ref. [Pilatowsky2021](@cite).
     # Arguments
-    - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref). 
-    - `quantum_state` should be a vector representing the quantum state  ``\\hat{\\rho}`` in the coherent efficient basis. 
     - `po` should be an instance of [`PO`](@ref) representing ``\\mathcal{O}`` above.
+      The system passed to create `po` should have been a [`QuantumDickeSystem`](@ref DickeBCE.QuantumDickeSystem).
+    - `quantum_state` should be a vector representing the quantum state  ``\\hat{\\rho}`` in the coherent efficient basis. 
     # Keyword arguments
-    - `Htol` is the tolerance to be passed to [`DickeBCE.husimi`](@ref)
+    - `chop` is the tolerance to be passed to [`DickeBCE.husimi`](@ref) (see the documentation of [`DickeBCE.coherent_overlap`](@ref))
     - `kargs` are redirected to [`overlap_of_tube_with_homogenous_state`](@ref), which gives the denominator in Eq. (17) of Ref. [Pilatowsky2021](@cite).
     """
-    function scarring_measure(system::DickeBCE.QuantumDickeSystem,
-        quantum_state::AbstractVector{<:Number},
-        po::PO;Htol::Real=1e-3,kargs...)
-        
-        POandState=average_over_PO(po,x->DickeBCE.husimi(system,x,quantum_state;tol=Htol))
-        POandHomState=overlap_of_tube_with_homogenous_state(system,po,kargs...)
-        return POandState/POandHomState
+    function scarring_measure(
+        po::PO{DickeBCE.QuantumDickeSystem},
+        quantum_state::AbstractVector{<:Number};
+        chop::Real=1e-3,
+        kargs...)
+        system=po.system
+        po_and_state = average_over_PO(po,x -> DickeBCE.husimi(system,x,quantum_state;chop=chop))
+        po_and_hom_state = overlap_of_tube_with_homogenous_state(po;kargs...)
+        return po_and_state/po_and_hom_state
     end
     
 end
-                                                           
+                                                                                                                                                     

@@ -4,6 +4,7 @@ For examples of usage, go to  [Examples for ClassicalDicke](@ref).
 CurrentModule = DickeModel.ClassicalDicke
 ```
 ```@docs 
+DickeSystem
 ClassicalDickeSystem
 hamiltonian
 ```
@@ -25,18 +26,12 @@ minimum_energy_point
 normal_frequency
 ```
 
-## Semiclassical approximations
-```@docs 
-density_of_states
-energy_width_of_coherent_state
-```
-
 ## Roots in ``q``
 ```@docs 
 discriminant_of_q_solution
 q_of_ϵ
 q_sign
-Point(::ClassicalDickeSystem)
+Point(::DickeSystem)
 ```
 ## Atomic boundary of energy shells
 

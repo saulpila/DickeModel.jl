@@ -7,7 +7,7 @@ CurrentModule = DickeModel.UPOs
 ## Periodic Orbit (PO) type
 ```@docs 
 PO
-PO(::ClassicalDickeSystem, ::AbstractVector{<:Real})
+PO(::DickeSystem, ::AbstractVector{<:Real})
 Base.:(==)(::PO,::PO)
 Base.in(::AbstractVector{<:Number},::PO)
 ```

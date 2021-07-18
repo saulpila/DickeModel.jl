@@ -82,7 +82,7 @@ In this example, we will find a family of periodic orbits by looking at the scar
 produces in a quantum eigenstates. This procedure was used in Ref. [Pilatowsky2021Identification](@cite) with
  ``j=100``. In this example we will work with a smaller system size of ``j=30``.
 
-First, let us setup our classical and quantum systems.
+First, let us setup our quantum system.
 ```@setup examples
 @info "Starting example: UPOS from Husimi"
 ```
@@ -92,19 +92,18 @@ using DickeModel.DickeBCE
 using DickeModel.ClassicalDicke
 using DickeModel.EnergyShellProjections
 using Plots
+
 j = 30
 Nmax = 120
-
-systemC = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
-systemQ = QuantumDickeSystem(systemC, j = j, Nmax=120)
+system = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j = j, Nmax=120)
 
 if false #hide
-eigenenergies,eigenstates = diagonalization(systemQ) 
+eigenenergies,eigenstates = diagonalization(system) 
 end #hide
 if !use_current_dir_for_diags #hide
-eigenenergies,eigenstates =  diagonalization(systemQ,verbose=false) #hide
+eigenenergies,eigenstates =  diagonalization(system,verbose=false) #hide
 else #hide
-eigenenergies,eigenstates =  diagonalization(systemQ, cache_folder=cache_fold_name,verbose=false)  #hide
+eigenenergies,eigenstates =  diagonalization(system, cache_folder=cache_fold_name,verbose=false)  #hide
 end #hide
 ϵs = eigenenergies/j
 nothing; #hide
@@ -134,13 +133,13 @@ res = 0.04
 if !on_github #hide
     res = 0.1 #hide
 end #hide
-Qs,Ps,mat = proj_husimi_QP_matrix(systemQ, 
+Qs,Ps,mat = proj_husimi_QP_matrix(system, 
     state, 
     ϵ = ϵs[k], 
     res = res, 
     show_progress = false, #hide
     symmetricQP = true, 
-    Htol = 1e-2)
+    chop = 1e-2)
 heatmap(Qs, Ps, mat, xlabel="Q", ylabel="P")
 ```
 
@@ -153,14 +152,14 @@ in ``Q``. We add arguments `matrix_powers`, `onlyqroot`, and `symmetricP` (not `
 @info "Starting example: UPOS from Husimi, half plot"
 ```
 ```@example examples
-Qs₊, Ps₊, mat₊ = proj_husimi_QP_matrix(systemQ, 
+Qs₊, Ps₊, mat₊ = proj_husimi_QP_matrix(system, 
     state, 
     ϵ = ϵs[k],
     show_progress = false, #hide
     matrix_powers=2, 
     res = res, 
     symmetricP = true, 
-    Htol = 1e-2,
+    chop = 1e-2,
     onlyqroot = +)
 
 heatmap(Qs₊, Ps₊, mat₊, xlabel="Q", ylabel="P")
@@ -233,12 +232,12 @@ P0=0.6
 function hus(;p,Q,P)
     let point
         try 
-            point=Point(systemC, Q=Q, P=P, p=p, ϵ=ϵs[k], signo=+)
+            point=Point(system, Q=Q, P=P, p=p, ϵ=ϵs[k], signo=+)
         catch #the point is outside the energy shell.
             return 0
         end
 
-        return DickeBCE.husimi(systemQ,point,state,tol=1e-3)
+        return DickeBCE.husimi(system,point,state,chop=1e-3)
     end
 end
 
@@ -261,7 +260,7 @@ pmax1, P1 = Optim.maximizer(maximize(x -> hus(p=x[1], P=x[2], Q=Q0), [pmax,P0]))
 ```
 We now can define an initial condition
 ```@repl examples
-u0 = Point(systemC, Q=Q0, P=P1, p=pmax1, ϵ=ϵs[k])
+u0 = Point(system, Q=Q0, P=P1, p=pmax1, ϵ=ϵs[k])
 ```
 
 It is time to use the module [`UPOs`](@ref DickeModel.UPOs). Let us first see how the evolution of this
@@ -273,18 +272,18 @@ point looks like with [`UPOs.QP`](@ref DickeModel.UPOs.QP). Let's evolve it for,
 using DickeModel.UPOs
 matrixPlot = heatmap(Qs, Ps, mat, xlabel="Q", ylabel="P", key=false)
 scatter(matrixPlot, [(u0[1],u0[3])])
-plot!(QP(PO(systemC, u0, 10)))
+plot!(QP(PO(system, u0, 10)))
 ```
 
 It looks like it is following the scar. To estimate the period, we can use [`UPOs.approximate_period`](@ref DickeModel.UPOs.approximate_period).
 We give it a `bound = 0.5`, and it will tell us the time it takes for the periodic condition to come back
 to the same `p` plane inside a neighborhood of radius `bound` around `u0`:
 ```@repl examples
-T = UPOs.approximate_period(systemC, u0; bound=0.5)
+T = UPOs.approximate_period(system, u0; bound=0.5)
 ```
 It found a period! The evolution up to that period looks like this:
 ```@example examples
-plot(matrixPlot, QP(PO(systemC, u0, T)))
+plot(matrixPlot, QP(PO(system, u0, T)))
 ```
 Well, it doesn't come back completely, and it looks a bit wonky, but the monodromy method [DeAguiar1988](@cite), [Baranger1988](@cite), [Pilatowsky2021](@cite), [Simonovi1999](@cite) will come to our aid. This algorithm converges to a true periodic orbit given a good enough initial guess, like ours.
 It is implemented in [`UPOs.monodromy_method_constant_energy`](@ref DickeModel.UPOs.monodromy_method_constant_energy), which conserves the energy
@@ -293,7 +292,7 @@ of the initial condition.
 @info "Starting example: UPOS from Husimi, monodromy"
 ```
 ```@repl examples
-po = monodromy_method_constant_energy(systemC, u0, T)
+po = monodromy_method_constant_energy(system, u0, T)
 ```
 ```@example examples
 plot(matrixPlot, QP(po))
@@ -304,7 +303,7 @@ We can measure that it is actually scarring the eigenstate using the measure ``\
 is implemented in [`UPOs.scarring_measure`](@ref DickeModel.UPOs.scarring_measure):
 
 ```@repl examples
-scarring_measure(systemQ, state, po)
+scarring_measure(po,state)
 ```
 This tells us that the state is ``\sim 12`` times more likely to be found near the PO than
 a totally delocalized state.

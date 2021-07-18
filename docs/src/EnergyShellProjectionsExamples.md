@@ -48,7 +48,7 @@ nothing; #hide
 ```
 The function [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) will make use
 of all the available workers (you may disable this by passing `parallelize = false`)
-!!! warning 
+!!! note 
     The line 
     ```julia 
     @everywhere using DickeModel
@@ -66,7 +66,7 @@ state = eigenstates[:,k]
 ϵₖ = ϵs[k]
 res = 0.02
 if !on_github #hide
-    res = 0.5 #hide 
+    res = 0.5 #hide
 end #hide
 heatmap(
     EnergyShellProjections.proj_husimi_QP_matrix(system,
@@ -74,6 +74,7 @@ heatmap(
         ϵ = ϵₖ,
         symmetricQP = true,
         show_progress = false,#hide
+        chop = 1e-2, # Here 1e-2 is enough, but see what works for you
         res = res)...,
     xlabel = "Q",
     ylabel = "P")
@@ -81,11 +82,17 @@ savefig("k600stateprojhu.svg");nothing #hide
 ```
 ![](k600stateprojhu.svg)
 
-Moreover, using the function [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix)  we can plot the projection of the ``\alpha``-moments of the Husimi function, which are given by
+!!! tip 
+    Note that we set `chop = 1e-2` above, which decreases computation time and practically
+    does not affect the result. If you decrease `chop` in this example, computation time 
+    will increase but the plot will look the same. Always try to increase `chop` as much as your tolerance for numerical errors allows. 
+    See [this example](@ref ExampleEfficientHusimiFunctions) for details on `chop`.
+ 
+Using the function [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix)  we can also plot the projection of the ``\alpha``-moments of the Husimi function, which are given by
 ```math
     \iint \text{d} q\text{d} p \,\delta(h_\text{cl}(\mathbf{x})-\epsilon_k)\, \mathcal{Q}_{k}(\mathbf{x})^\alpha.
 ```
-for  ``\alpha\geq 0``. Let us do this for `k = 750` and four value of ``\alpha``, `[0.5,1,2,3,4]`.
+for  ``\alpha\geq 0``. Let us do this for `k = 750` and four values of ``\alpha``, `[0.5,1,2,3,4]`, which are passed to the keyword argument `matrix_powers`.
 ```@setup examples
 @info "Starting example: Husimi powers"
 ```
@@ -96,7 +103,7 @@ state = eigenstates[:,k]
 powers = [0.5,1,2,3,4] 
 res = 0.04
 if !on_github #hide
-    res = 0.5 #hide 
+    res = 0.5 #hide
 end #hide
 Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(system,
     state,
@@ -104,6 +111,7 @@ Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(system,
     show_progress = false, #hide
     matrix_powers = powers,
     symmetricQP = true,
+    chop = 1e-2,
     res = res)
 
 plot(
@@ -143,11 +151,11 @@ so the coefficients of the coherent state are not even calculated, and the resul
 ts = range(-π+0.3, -0.4, length = 30) ∪ range(0.2, π-0.6, length = 20)
 💗(t) = (1.5sin(t)^3,(13cos(t) - 5cos(2t) -2cos(3t) - cos(4t))/10)
 ϵ = 1
-res = 0.02
+res = 0.04
 if !on_github #hide
-    res = 0.5 #hide 
+    res = 0.5 #hide
 end #hide
-coherents = hcat([Point(system.classical_system,Q=Q,P=P,p=0,ϵ=ϵ) for (Q,P) in 💗.(ts)]...)
+coherents = hcat([Point(system,Q=Q,P=P,p=0,ϵ=ϵ) for (Q,P) in 💗.(ts)]...)
 heatmap(EnergyShellProjections.proj_husimi_QP_matrix(system,coherents;
     mix_states = true,
     ϵ = ϵ,
@@ -161,7 +169,7 @@ savefig("heartofcoherents.svg");nothing #hide
 
 Nota that above, we passed `mix_states = true` to [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix).
 This tells the code to average together all of the Husimi functions of the states (using [`Statistics.mean`](https://docs.julialang.org/en/v1/stdlib/Statistics/#Statistics.mean)), that is, you compute the Husimi function of the mixed state.
-You may even pass a  more complicated `mix_function` to add weights (see the documentation of [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) for details). If we had set `mix_states = false` (default), we would have obtained a matrix for each state. 
+You may even pass a  more complicated `mix_function` to add weights (see the documentation of [`rényi_occupation_and_proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.rényi_occupation_and_proj_husimi_QP_matrix) for details). If we had set `mix_states = false` (default), we would have obtained a matrix for each state. 
 
 The fact that [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) may return the projection of multiple 
 states at the same time allows to create really nice animations. We evolve the state using [`DickeBCE.evolve`](@ref DickeModel.DickeBCE.evolve).
@@ -170,7 +178,7 @@ states at the same time allows to create really nice animations. We evolve the s
 ```
 ```@example examples
 ϵ = -0.5
-x = Point(system.classical_system, Q=1, P=1, p=0, ϵ=ϵ)
+x = Point(system, Q=1, P=1, p=0, ϵ=ϵ)
 coherent_x = coherent_state(system,x)
 ts = 0:0.1:20
 res = 0.1
@@ -181,9 +189,10 @@ end #hide
 evolution = evolve(ts,coherent_x,eigenstates=eigenstates,eigenenergies=eigenenergies)
 Qs,Ps,matrices=EnergyShellProjections.proj_husimi_QP_matrix(system,
     evolution,
+    ϵ = ϵ,
     show_progress = false, #hide
     res = res,
-    ϵ = ϵ)
+    chop = 1e-2)
 
 animation=@animate for mat in matrices
    heatmap(Qs, Ps, mat,
@@ -227,7 +236,7 @@ Nmax = 120
 system = QuantumDickeSystem(ω₀=1, ω=1, γ=1, j=j, Nmax=Nmax)
 if false #hide
 eigenenergies,eigenstates =  diagonalization(system)
-end #hide 
+end #hide
 
 ϵ = -0.5
 n_of_states = 20
@@ -264,6 +273,7 @@ plot(αs,av_𝔏αs,
 savefig("randomStatesL.svg");nothing #hide
 ```
 ![](randomStatesL.svg)
+
 The form of this plot is precisely Eq. (18) of Ref. [Pilatowsky2021Identification](@cite). 
 !!! tip
     If you plan to compute both  [`EnergyShellProjections.rényi_occupation`](@ref DickeModel.EnergyShellProjections.rényi_occupation) and

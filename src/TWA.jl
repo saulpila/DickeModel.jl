@@ -323,7 +323,7 @@ module TWA
     - `observable` can a function in the form `f(x::Vector)` or `f(x1,x2 ,..., x_n)` with 
       n the dimension of the phase space determined by `system`. `observable` can also be
       an expression determining the operations between the `varnames` determined by system. For example,
-      if `system` were a instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref Main.ClassicalDicke.ClassicalDickeSystem), then `observable`
+      if `system` were a instance of [`ClassicalDicke.DickeSystem`](@ref Main.ClassicalDicke.DickeSystem), then `observable`
       could be `:(q+p^2 +Q)`, `f(Q, q, P, p) = q + p^2 - Q` or `f(x) = x[2] + x[4]^2 - x[1]`, which
       are all equivalent.
       See also the submodule [`Weyl`](@ref DickeModel.TWA.Weyl), which produces expressions corresponding to 

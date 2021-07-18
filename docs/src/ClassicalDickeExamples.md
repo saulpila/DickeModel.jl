@@ -5,6 +5,8 @@ push!(LOAD_PATH,"../../src")
 on_github=get(ENV, "CI", nothing) == "true"
 using DickeModel
 ```
+The module [`DickeModel.ClassicalDicke`](@ref DickeModel.ClassicalDicke) works with the classical Dicke model, which is obtained by taking the expectation value of the quantum dicke model under coherent states (see, for example, Ref. [Villasenor2020](@cite)).
+The classical Dicke Hamiltonian is, regular at low energies, and chaotic at high energies. (see, for example, Ref. [Pilatowsky2020](@cite)). 
 
 ## Drawing contours of the available phase space
 We may use the function [`ClassicalDicke.minimum_ϵ_for`](@ref) to draw the contour of the available phase space in the variables
@@ -24,25 +26,6 @@ contour(Qs, Ps,
 savefig("contourQP.svg"); nothing #hide
 ```
 ![](contourQP.svg)
-## Plotting the density of states
-Using [`ClassicalDicke.density_of_states`](@ref), we plot the semiclassical 
-density of states originally calculated in Ref. [Bastarrachea2014](@cite).
-```@setup examples
-@info "Starting example: DoS"
-```
-```@example examples
-using DickeModel.ClassicalDicke
-using Plots
-system = ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
-ν(ϵ) = density_of_states(system, ϵ; j=100)
-ϵgs = minimum_energy(system)
-plot(ν, ϵgs:0.01:2, xlabel="ϵ", ylabel="Density of States")
-plot!(key=false) #hide
-savefig("density_of_states.svg"); nothing #hide
-```
-![](density_of_states.svg)
-
-This is precisely the red line in Fig. A1. of Ref. [Villasenor2020](@cite).
 
 ## Drawing a Poincaré surface
 
@@ -57,7 +40,7 @@ using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
 using Plots
 using DiffEqBase
 
-system=ClassicalDickeSystem(ω=0.8,γ=0.8,ω₀=1)
+system=ClassicalDickeSystem(ω=0.8, γ=0.8, ω₀=1)
 mplot=scatter(fmt=:png, key=false, markersize=1, legend=false,
     size=(500,500), color_palette=:darkrainbow, xlabel="Q", ylabel="P") 
 
@@ -84,8 +67,6 @@ for Q in minimum_nonnegative_Q_for_ϵ(system,ϵ):0.02:maximum_Q_for_ϵ(system, �
         scatter!(pts)
         empty!(pts)
         if !on_github break end #hide
-
-
 end
 mplot
 savefig("poincare_surface.png");nothing #hide
@@ -95,15 +76,17 @@ savefig("poincare_surface.png");nothing #hide
 ## Drawing a Lyapunov exponent map
 
 Let us plot the Lyapunov exponents for the Poincaré map of the previous example.
-The code below is lengthy because it tries to compute as little data as possible.
-Computing Lyapunov exponents is expensive, because one needs to integrate the variational
-system. However, any two points in the same trajectory will share the same Lyapunov exponent, 
-so we may compute the Lyapunov exponent for an initial condition, and all other points that
-it passes through have the same one, so we do not need to compute it again.
+The code below is lengthy, but here's the idea in a nutshell:
 
-This code generates a matrix in the plane ``(p = 0,\epsilon = \text{constant})``, 
+Computing Lyapunov exponents is expensive, because one needs to integrate the variational
+system to obtain the fundamental matrix in the tangent space. However, any two points in the same trajectory will share the same Lyapunov exponent, 
+so we may compute the Lyapunov exponent for an initial condition, and all other points that
+it passes through have the same one.
+
+This code below generates a matrix in the plane ``(p = 0,\epsilon = \text{constant})``, 
 and averages the Lyapunov exponent of all the trajectories that pass through each square
-in the matrix.
+in the matrix. It starts taking initial conditions for the matrix, but if it reaches a square which another trajectory has crossed, it skips it, because it already knows the corresponding Lyapunov exponent.
+
 ```@setup examples
 @info "Starting example: Lyapunov map"
 ```

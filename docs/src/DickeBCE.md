@@ -23,7 +23,7 @@ survival_probability
 ```@docs
 DickeBCE.Jx
 DickeBCE.Jz
-hamiltonian
+hamiltonian_operator
 parity_operator
 ```
 ### Participation Ratio
@@ -42,6 +42,12 @@ coherent_state
 coherent_overlap
 husimi
 husimi_of_coherent
+```
+
+## Semiclassical approximations
+```@docs 
+density_of_states
+energy_width_of_coherent_state
 ```
 
 ## Random states 
