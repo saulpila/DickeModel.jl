@@ -1,4 +1,5 @@
 # DickeModel.DickeBCE
+For examples of usage, go to  [Examples for DickeBCE](@ref).
 ```@meta
 CurrentModule = DickeModel.DickeBCE
 ```

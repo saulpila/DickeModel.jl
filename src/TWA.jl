@@ -85,9 +85,10 @@ module TWA
     
     This function uses all the available workers, but make sure to import this module in all of them.
     
-    # Arguments:
+    # Arguments
     - `system` should be an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
     - `mc_system` should be an instance of  [`MonteCarloSystem`](@ref TWA.MonteCarloSystem).
+    # Keyword arguments
     - `tolerate_errors` indicates that some errors in the integration may be ignored.
       This is useful because sometimes a one-in-a-million numerical instability may arise, and
       you may want to ignore it. If more than `100` errors occur consecutively, then then the
@@ -186,7 +187,7 @@ module TWA
                                 if notimeevolution
                                     call_loop(u₀,0.0,0)
                                 else
-                                    ClassicalSystems.integrate(system,t=last(ts),save_everystep=false,u₀=u₀,callback=cb;kargs...)
+                                    ClassicalSystems.integrate(system,u₀,last(ts);kargs...,save_everystep=false,callback=cb)
                                 end
                                 ti_error=1
 
@@ -318,6 +319,7 @@ module TWA
     
     # Arguments
     - `system` should be an instance of [`ClassicalSystems.ClassicalSystem`](@ref),
+    # Keyword arguments
     - `observable` can a function in the form `f(x::Vector)` or `f(x1,x2 ,..., x_n)` with 
       n the dimension of the phase space determined by `system`. `observable` can also be
       an expression determining the operations between the `varnames` determined by system. For example,
@@ -397,6 +399,7 @@ module TWA
     
     # Arguments
     - `system` should be an instance of [`ClassicalSystems.ClassicalSystem`](@ref),
+    # Keyword arguments
     - `x` and `y` can be `:t`, or an observable as described in the arguments of [`mcs_for_averaging`](@ref).
     - `xs` and `ys` should be given if  `x` and  `y` are not  `:t`, in wich case they should be
       range objects (e.g. `0:0.1:1`) containing the bins for the histogram.
@@ -581,8 +584,8 @@ module TWA
     the same size as `ts`, containing the result for each time.
     
     # Arguments
-      - See arguments for [`mcs_for_averaging`](@ref).
-      - If `return_average=false` (default), only produces the variance, else it 
+      - See arguments and keyword arguments that [`mcs_for_averaging`](@ref).
+      - If `return_average = false` (default), only produces the variance, else it 
         will produce a tuple, where the first element is the variance and the second
         the average.
     """
@@ -641,8 +644,9 @@ module TWA
     
     # Arguments
     - `system` should be an instance of [`ClassicalSystems.ClassicalSystem`](@ref),
-    - `ts` should be a sorted array of times.
+    # Keyword arguments
     - `N` is the number of points to sample. The bigger the more accurate.
+    - `ts` should be a sorted array of times.
     - `distribution` should be an instance of [`PhaseSpaceDistribution`](@ref)
     """
     function mcs_for_survival_probability(system::ClassicalSystems.ClassicalSystem;

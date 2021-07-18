@@ -11,11 +11,13 @@ The module [`DickeModel.DickeBCE`](@ref DickeModel.DickeBCE) works with the quan
 using a very efficient basis known as the coherent efficient basis (BCE for its acronym in Spanish).
 See Refs. [Bastarrachea2014PSa](@cite) and [Bastarrachea2014PSb](@cite) for a detailed explanation on how and why it works. 
 Throughout this examples, we will work with a system size of `j = 30`, but  using this module you can easily go up
-to `j = 100`, as done in Refs. [Pilatowsky2021](@cite), [Pilatowsky2021NatCommun](@cite),  [Villasenor2021](@cite).
+to `j = 100` (as done in Refs. [Pilatowsky2021](@cite), [Pilatowsky2021NatCommun](@cite), [Pilatowsky2021Identification](@cite), [Villasenor2021](@cite)) and beyond.
 
 ## Diagonalizing the Dicke Hamiltonian
 Let us start by defining our parameters:
-
+```@setup examples
+@info "Starting example: Diagonalization"
+```
 ```@example examples
 using DickeModel.DickeBCE, DickeModel.ClassicalDicke
 systemQ = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j=30, Nmax=120)
@@ -33,7 +35,9 @@ end #hide
 nothing; #hide
 ```
 
-This saves the diagonalization to disk, so next time you can do:
+Diagonalizing the Hamiltonian is an expensive operation. For `j = 100` and `Nmax = 300` it
+can take up to a day, but the function [`diagonalization`](@ref DickeModel.DickeBCE.diagonalization) saves the result to disk, so the second
+time you call it with the same parameters it just loads it:
 ```@example examples
 systemQ = QuantumDickeSystem(ω=1.0, γ=1.0, ω₀=1.0, j = 30) 
 eigenenergies,eigenstates =  0,0 #hide
@@ -44,13 +48,25 @@ else #hide
 end #hide
 nothing; #hide
 ```
-(Note that we did not have to pass `Nmax` this time, it loaded it from disk.)
+Note that we did not have to pass `Nmax` this time, it loaded it from disk 
+(see more details on the documentation of [`QuantumDickeSystem`](@ref DickeModel.DickeBCE.QuantumDickeSystem)). 
+
+You can change the default folder, or disable caching altogether by passing extra arguments to [`diagonalization`](@ref DickeModel.DickeBCE.diagonalization).
 
 The resulting `eigenstates` form a matrix. To get the ``k``th eigenstate,
-simply do `state_k = eigenstates[:,k]`.
+simply call `state_k = eigenstates[:,k]` (or, even better, `state_k = @view eigenstates[:,k]`,
+which [avoids unnecessary memory allocations.](https://docs.julialang.org/en/v1/manual/performance-tips/#man-performance-views))
 
 ## [Local density of states of a coherent state](@id quantumldoscoherentstateex)
+
 In this example, we obtain the eigenenergy components of a coherent state.
+The function [`coherent_state`](@ref DickeModel.DickeBCE.coherent_state) will give us
+a coherent state in the BCE, then we project it into the eigenbasis by left-multiplying
+by `eigenstates'`, which is short for  [`adjoint`](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#Base.adjoint)`(eigenstates)`.
+Finally, we broadcast the [vectorized version of](https://docs.julialang.org/en/v1/manual/functions/#man-vectorized) the function [`abs2`](https://docs.julialang.org/en/v1/base/math/#BaseW.abs2) to extract all the coefficients.
+```@setup examples
+@info "Starting example: Coherent LDoS"
+```
 ```@example examples
 using Plots
 using DickeModel.DickeBCE, DickeModel.ClassicalDicke
@@ -64,7 +80,7 @@ end #hide
 ϵₓ = -0.5
 x = Point(systemC, Q=-1, P=0, p=0, ϵ=ϵₓ)
 coh_state = coherent_state(systemQ, x)
-coherent_state_eigenbasis = transpose(eigenstates)*coh_state 
+coherent_state_eigenbasis = eigenstates'*coh_state 
 abscₖ²=abs2.(coherent_state_eigenbasis)
 ϵₖs = eigenenergies/j
 
@@ -85,7 +101,13 @@ computation of the envelope of this function.
 
 ## [Evolution of coherent state vs TWA](@id TWAvsQuantum)
 Let us compare the evolution of a quantum state with that given by truncated Wigner
-approximation (see Refs. [Villasenor2020](@cite), [Pilatowsky2020](@cite)).
+approximation (TWA). See Refs. [Villasenor2020](@cite), [Pilatowsky2020](@cite).
+
+Let us first setup our variables. We select a point in the phase space and load
+the Wigner function of a coherent state centered at that point using [`TWA.coherent_Wigner_HWxSU2`](@ref TWA.coherent_Wigner_HWxSU2)
+```@setup examples
+@info "Starting example: Quantum vs TWA"
+```
 ```@example examples
 using Plots
 using DickeModel.TWA
@@ -105,8 +127,9 @@ nothing #hide
 ```
 
 First, we compare the expectation value of the observable ``\hat{J}_z^2``.
-Note that we use [`Weyl.Jz²`](@ref DickeModel.TWA.Weyl.Jz²)`(j)`,
-which is not the same as [`Weyl.Jz`](@ref DickeModel.TWA.Weyl.Jz)`(j)^2`.
+We load its Weyl symbol using [`Weyl.Jz²(j)`](@ref DickeModel.TWA.Weyl.Jz²),
+which is not the same as [`Weyl.Jz(j)`](@ref DickeModel.TWA.Weyl.Jz)`^2` due to 
+non-commutativity.
 ```@example examples
 ts= 0:0.05:40
 evolution = evolve(ts, coh_state, 
@@ -133,6 +156,9 @@ savefig("Jz2_QvsTWA.svg");nothing #hide
 ![](Jz2_QvsTWA.svg)
 
 Now let us take a look at the survival probability (see Ref. [Villasenor2020](@cite)).
+We use the function [`DickeBCE.survival_probability`](@ref) to compute the exact
+survival probability, and [`TWA.survival_probability`](@ref) gives us the result from
+the TWA.
 ```@example examples
 ts=exp10.(-2:0.01:3)
 
@@ -159,12 +185,17 @@ savefig("SP_QvsTWA.svg");nothing #hide
 ```
 ![](SP_QvsTWA.svg)
 
+For more examples on the TWA, go to [Examples for TWA](@ref).
+
 ## [Efficient Husimi functions](@id exampletolhusimis)
 
 The functions [`DickeBCE.husimi`](@ref DickeModel.DickeBCE.husimi),  [`DickeBCE.coherent_overlap`](@ref DickeModel.DickeBCE.coherent_overlap),
 and [`DickeBCE.coherent_state`](@ref DickeModel.DickeBCE.coherent_state) all accept a `tol` argument, which allows to significally speed
 up computation time at the cost of slight numerical precision [Pilatowsky2020Notes](@cite). In this example we show how significant this speedup can be.
 Let us construct a big system:
+```@setup examples
+@info "Starting example: Efficient Husimi"
+```
 ```@example randstateHusimi
 using DickeModel
 using DickeModel.DickeBCE
@@ -176,11 +207,12 @@ Nmax = 1200
 system = QuantumDickeSystem(ω₀=1, ω=1, γ=1, j=j, Nmax=Nmax);
 nothing; #hide
 ```
-**Do not try to diagonalize such a big system! Your computer might explode!**
+**Do not try to diagonalize such a big system! Your computer 💻 might explode 💥!**
 
 For the sake of example, let us construct some random states in a simple manner (although
 if you are interested in building random states in the eigenbasis, check the function
-[`DickeBCE.random_state`](@ref DickeModel.DickeBCE.random_state)).
+[`DickeBCE.random_state`](@ref DickeModel.DickeBCE.random_state) and see [this example](@ref ExampleRenyiOccupationsRandomStates)).
+
 ```@example randstateHusimi
 n = 3 #how many random vectors
 D = dimension(system)
@@ -209,20 +241,24 @@ However, if we allow `tol` to be slightly bigger, things will speed up significa
 ```@repl randstateHusimi
 @time husimi(system, x, random_vectors, tol=1e-14)
 ```
-Note that the results barely changed, but this time it used a lot less memory and time. The `tol` argument tells the code it can *chop* a portion of size `tol` off the tails of the distribution of the coherent state (see Ref. [Pilatowsky2020Notes](@cite) for details). You loose almost no information, 
-and you gain a lot of time. The default is `tol = 1e-6`, which gives enough precision
-for most purposes (although you may increase it if you need more precision):
+Note that the results barely changed, but this time it used a lot less memory and time.
+The `tol` argument tells the code it can *chop* a portion of size `tol` off the 
+tails of the distribution of the coherent state (see Ref. [Pilatowsky2020Notes](@cite) for details). 
+You loose almost no information, and you gain a lot of time. The default is `tol = 1e-6`,
+which gives enough precision for most purposes (although you may increase it if you need more precision):
 ```@repl randstateHusimi
 @time husimi(system, x, random_vectors) #default tol = 1e-6
 ```
 That's fast!
 
 ## [Projected Wigner function of a cat state](@id wignerfuncexample)
+    
 Using [`DickeBCE.WignerProjqp`](@ref DickeModel.DickeBCE.WignerProjqp), we may compute
-the Wigner function of a state, projected onto the atomic plane.
-Note: the functions for computing Wigner functions are not thoroughly tested.
-They are based on these notes [Pilatowsky2019Notes](@cite)
-
+the Wigner function of a state, projected onto the atomic plane. We do this for a [cat state](https://en.wikipedia.org/wiki/Cat_state#Cat_states_in_single_modes) composed of two coherent states centered at `x` and `y`, which, taking advantage of [Julia's Unicode
+capabilities](https://docs.julialang.org/en/v1/manual/unicode-input/), we call `🐱` (write `\:cat:` + Tab).
+```@setup examples
+@info "Starting example: Wigner Cat"
+```
 ```@example examples
 using DickeModel.ClassicalDicke, DickeModel.DickeBCE
 systemC = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
@@ -255,3 +291,7 @@ heatmap(Qs, Ps, mW, size=(600,600),
 savefig("catWigner.svg");nothing #hide
 ```
 ![](catWigner.svg)
+
+!!! note
+    The functions for computing Wigner functions are not thoroughly tested nor thoroughly optimized.
+    They are based on these notes [Pilatowsky2019Notes](@cite), but they have room for improvement.

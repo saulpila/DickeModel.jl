@@ -47,32 +47,37 @@ module ClassicalSystems
 
     """
     ```julia
-    function integrate(system::ClassicalSystem;t::Real,
-                       u₀::AbstractArray{<:Real, 1},
+    function integrate(system::ClassicalSystem,
+                       u₀::AbstractVector{<:Real},
+                       t::Real;
                        t₀=0.0::Real,
                        tol=1e-12::Real,
                        get_fundamental_matrix::Bool=false,
                        integrator_alg=TsitPap8(),
                        use_big_numbers::Bool=false,
                        integate_backwards::Bool=false,
+                       fundamental_matrix_initial=nothing,
                        kargs...)
     ```
     This function integrates initial condition `u₀` from `t₀` to `t` under the Hamiltonian system determined by `system`, returning an instance of [`OrdinaryDiffEq.ODESolution`](https://diffeq.sciml.ai/dev/basics/solution/).
 
-    # Arguments:
+    # Arguments
     - `system` is an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
     - `u₀` is an array which codifies the initial condition `[Q,q,P,p]` for `ClassicalDicke` and `[Q,P]` for `ClassicalLMG`.
     - `t` is the start time of the integration.
+    # Keyword arguments
     - `t₀` is the start of the integration (defaults to `t₀ = 0.0`) [`ClassicalSystems.ClassicalSystem`](@ref).
     - `tol` is the tolerance for the integration, which determines both `abstol` and `reltol` in [`OrdinaryDiffEq.solve`](https://diffeq.sciml.ai/stable/basics/common_solver_opts/)
     - `get_fundamental_matrix` determines whether to also compute the fundametal matrix of the system. If `true`, the result at each time is an [`ArrayPartition(x,Φ)`](https://diffeq.sciml.ai/stable/features/diffeq_arrays/#ArrayPartitions), so that `x=result.x[2]` retrieves the coordinate and `Ψ=result.x[2]` retrieves the fundamental matrix. Default is `false`. Note that the integration is consideribly slowed down if this parameter is set to `true`.
     - `integrator_alg` is the integration algorithm to use. Defaults to `TsitPap8` (Tsitouras-Papakostas 8/7 Runge-Kutta method). See [the `DifferentialEquations` documentation](https://diffeq.sciml.ai/stable/solvers/ode_solve/#Full-List-of-Methods) for other options.
     - `use_big_numbers` forces the integration to be performed with `BigFloat` instead of `Float`, allowing for infinite numerical precision, but hindering speed substantially. Defaults to `false`.
     - `integate_backwards` tells the integrator to integrate back in time, from `-t₀` to `-t`. Defaults to  `false`.
+    - `fundamental_matrix_initial` is the initial value if `get_fundamental_matrix` is `true`. The default value is the identity matrix.
     - Additional `kargs` are passed to [`OrdinaryDiffEq.solve`](https://diffeq.sciml.ai/stable/basics/common_solver_opts/).
     """
-    function integrate(system::ClassicalSystem;t::Real,
-                            u₀::AbstractArray{<:Real, 1},
+    function integrate(system::ClassicalSystem,
+                            u₀::AbstractVector{<:Real},
+                            t::Real;
                             t₀=0.0::Real,
                             tol=1e-12::Real,
                             get_fundamental_matrix::Bool=false,
@@ -136,20 +141,24 @@ module ClassicalSystems
 
     """
     ```julia
-    function lyapunov_exponent(system::ClassicalSystem;kargs...)
+    function lyapunov_exponent(system::ClassicalSystem,
+        x::AbstractVector{<:Real},
+        t::Real = 100; kargs...)
     ```
     Returns the maximal [Lyapunov exponent](https://en.wikipedia.org/wiki/Lyapunov_exponent) for `x` by
-    calling `maximum(lyapunov_spectrum(system, x; kargs...))`. Same arguments as [`lyapunov_spectrum`](@ref) apply.
+    calling `maximum(lyapunov_spectrum(system, x, t; kargs...))`. Same arguments as [`lyapunov_spectrum`](@ref) apply.
     """
-    function lyapunov_exponent(system::ClassicalSystem,x::AbstractArray{<:Real, 1};kargs...)
-        return maximum(lyapunov_spectrum(system,x;kargs...))
+    function lyapunov_exponent(system::ClassicalSystem,
+        x::AbstractVector{<:Real},
+        t::Real = 100;kargs...)
+        return maximum(lyapunov_spectrum(system,x,t;kargs...))
 
      end
     """
     ```julia
     function lyapunov_spectrum(system::ClassicalSystem,
-        x::AbstractVector{<:Real};
-        t::Real = 100,
+        x::AbstractVector{<:Real},
+        t::Real = 100;
         λtol::Real = 1e-5, 
         λreltol::Real = 1e-3,
         maxiters::Integer = 100,
@@ -162,14 +171,17 @@ module ClassicalSystems
     # Arguments
     - `system` is an instance of [`ClassicalSystems.ClassicalSystem`](@ref).
     - `x` is an array which codifies the initial condition `[Q,q,P,p]` for `ClassicalDicke` and `[Q,P]` for `ClassicalLMG`.
+    - `t` is the time intervals for which to integrate. This value must not be too big, or the fundamental matrix may
+      get too large and errors will occur.  Default value is `100`, which is fine most of the time.
+    # Keyword arguments
     - `λtol` is the absolute tolerance (``E_a`` in Fig. 3.7 of Ref. [Parker1989Book](@cite)). Default is `1e-5`.
     - `λreltol` is the relative tolerance (``E_r`` in Fig. 3.7 of Ref. [Parker1989Book](@cite)). Default is `1e-3`.
     - `maxiters` is the maximum number of iterations. Default is `100`.
     - `verbose` is a boolean toggling the progress bar (default is `true`, which enables the progress bar).
-    - `kargs` are redirected to [`integrate`](@ref). 
+    - `kargs` are redirected to [`integrate`](@ref integrate(::ClassicalSystem,::AbstractVector{<:Real},::Real)). 
     """
-    function lyapunov_spectrum(system::ClassicalSystem, x::AbstractVector{<:Real};
-        t::Real = 100,
+    function lyapunov_spectrum(system::ClassicalSystem, x::AbstractVector{<:Real},
+        t::Real = 100;
         λtol::Real = 1e-4, 
         λreltol::Real = 1e-3,
         maxiters::Integer = 100,
@@ -187,7 +199,7 @@ module ClassicalSystems
 
         for k in 1:maxiters
             λ_old .= λ
-            x,δx=integrate(system;kargs...,u₀=x,fundamental_matrix_initial=u,save_everystep=false,get_fundamental_matrix=true,t=t,verbose=verbose).u[end].x
+            x,δx=integrate(system,x,t;kargs...,fundamental_matrix_initial=u,save_everystep=false,get_fundamental_matrix=true,verbose=verbose).u[end].x
    
             for i in 1:n
                 v[:,i] .= @view δx[:,i]
@@ -211,4 +223,4 @@ module ClassicalSystems
         error("Maximum iterations")
     end                      
 end
-                                                                                                          
+                                                                                                                   

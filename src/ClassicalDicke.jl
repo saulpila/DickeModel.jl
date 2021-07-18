@@ -33,7 +33,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     
     This struct may be passed to all functions in this module that require an instance of `ClassicalDicke.ClassicalDickeSystem`,
     as well as functions in other modules that require the abstract [`ClassicalSystems.ClassicalSystem`](@ref), 
-    such as  [`ClassicalSystems.integrate`](@ref).
+    such as  [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)).
     """
     struct ClassicalDickeSystem <: ClassicalSystems.ClassicalSystem
         parameters::Vector{Float64}
@@ -63,7 +63,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     Returns a classical Hamiltonian function `h(x)` where `x=[Q,q,P,p]`, which is given by
     Eq. (5) of Ref. [Pilatowsky2021](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     """
     function hamiltonian(system::ClassicalDickeSystem)
@@ -77,21 +77,24 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     end
     """
     ```julia
-    function density_of_states(system::ClassicalDickeSystem;j::Real,ϵ::Real)
+    function density_of_states(system::ClassicalDickeSystem, ϵ::Real; j::Real)
     ```
-    Returns the semiclassical density of states (DoS) ``ν(ϵ)``, in units of ``1/ϵ``. This is computed
-    with an expression similar to Eq. (19) of Ref. [Bastarrachea2014](@cite), where
-    we add an additional factor of ``j`` to have units of ``1/ϵ`` instead of ``1/E``, and the integral is performed
-    with a change of variable.
-
-    # Arguments:
+    Returns the semiclassical density of states (DoS) ``ν(ϵ)``, in units of ``1/ϵ``, as given by
+    Eq. (A1) of Ref [Pilatowsky2021Identification](@cite). This is computed using a modified version of
+    Eq. (A2) the same reference, (the integral is 
+    performed in the variable ``Q`` instead of ``y``). That equation was originally derived in Ref. [Bastarrachea2014](@cite), with
+    different units for ``\\epsilon``. 
+        
+    The integration is performed using [`QuadGK`](https://github.com/JuliaMath/QuadGK.jl).
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
-    - `j` is the value of ``j``
     - `ϵ` is the scaled energy ``ϵ=E/j``
+    # Keyword arguments
+    - `j` is the value of ``j``
 
     See [Plotting the density of states](@ref) for an example.
     """
-    function density_of_states(system::ClassicalDickeSystem;j::Real,ϵ::Real)
+    function density_of_states(system::ClassicalDickeSystem, ϵ::Real; j::Real)
         ω₀,ω,γ=ClassicalSystems.parameters(system)
         energy_shell_volume(system,ϵ)*(j/(2pi))^2
     end
@@ -102,29 +105,35 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```
     Returns the volume of the classical energy shell in the phase space, that is, ``\\mathcal{V}(\\mathcal{M}_ϵ)`` in Eq. (27) of Ref. [Villasenor2021](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `ϵ` is the scaled energy ``ϵ=E/j``
     """
     function energy_shell_volume(system::ClassicalDickeSystem,ϵ::Real)
         ω₀,ω,γ=ClassicalSystems.parameters(system)
+        if ϵ <= minimum_energy(system)
+            return 0.0
+        end
         if ϵ>=ω₀
             return 8*pi^2/ω
         end
-        Pmax(Q)=sqrt(max((ω*(2*ϵ + 2*ω₀) - Q^2*((-4 + Q^2)*γ^2 + ω*ω₀))/(Q^2*γ^2 + ω*ω₀),0))
+        
+        #This function gives the height of P for a given Q, we then integrate
+        #it over the allowed positive values for Q (and multiply by 2*pi*4/ω).
+        Pmax(Q)=sqrt((ω*(2*ϵ + 2*ω₀) - Q^2*((-4 + Q^2)*γ^2 + ω*ω₀))/(Q^2*γ^2 + ω*ω₀))
         return quadgk(Pmax,minimum_nonnegative_Q_for_ϵ(system,ϵ),maximum_Q_for_ϵ(system,ϵ))[1]*2*pi*4/ω
     end
 
     """
     ```julia
     function normal_frequency(system::ClassicalDickeSystem,
-        signo::Union{typeof(-),typeof(+)}=+)
+        signo::Union{typeof(-),typeof(+)} = +)
     ```
     Returns the ground-state normal frequency, that is, ``\\Omega_{\\epsilon_{\\text{GS}}}^{A,B}`` at the bottom of page 3 of Ref. [Pilatowsky2021](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
-    - `signo` is `-` for ``\\Omega^A`` and `+` for ``\\Omega^B``.
+    - `signo` is `-` for ``\\Omega^A`` and `+` for ``\\Omega^B``. Defaults to `+`.
 
     Note: This function currently only works for the supperadiant phase.
     """
@@ -141,16 +150,16 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     """
     ```julia
     function minimum_energy_point(system::ClassicalDickeSystem,
-        Qsign::Union{typeof(-),typeof(+)}=+)
+        Qsign::Union{typeof(-),typeof(+)} = +)
     ```
     Returns the ground-state coordinate, that is,  `(0, 0, 0, 0)` for the normal
     phase and ``\\mathbf{x}_\\text{GS}`` below Eq. (7) of Ref. [Pilatowsky2021](@cite) for the
     superradiant phase.
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `Qsign` toggles the sign of the ``Q`` coordinate in the superradiant phase, 
-      that is, `+` for ``\\mathbf{x}_\\text{GS}`` and  `-` for ``\\widetilde{\\mathbf{x}}_\\text{GS}``.
+      that is, `+` for ``\\mathbf{x}_\\text{GS}`` and  `-` for ``\\widetilde{\\mathbf{x}}_\\text{GS}`` . Defaults to `+`.
     """
     function minimum_energy_point(system::ClassicalDickeSystem,signoQ::Union{typeof(-),typeof(+)}=+)
         local signoq
@@ -175,7 +184,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ``\\omega_0`` (because in that work they use ``\\epsilon =E/(\\omega_0 j)``, and in this module we
     use ``\\epsilon = E/j``).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     """
     function minimum_energy(system::ClassicalDickeSystem)
@@ -192,18 +201,19 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     """
     ```julia
     function energy_width_of_coherent_state(system::ClassicalDickeSystem,
-        x::AbstractVector{<:Real},
+        x::AbstractVector{<:Real};
         j::Real)
     ```
     Returns the energy width ``\\sigma`` of the coherent state ``\\left | \\mathbf{x}\\right \\rangle``, in units of ``\\epsilon``. This
     quantity is given by ``\\sigma_D/j`` with ``\\sigma_D`` as in App. A of Ref. [Lerma2018](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `x` is the coordinate ``\\mathbf{x}`` of the coherent state in the format `[Q,q,P,p]`.
+    # Keyword arguments
     - `j` is the value of ``j``.
     """
-    function energy_width_of_coherent_state(system::ClassicalDickeSystem,x::AbstractVector{<:Real},j::Real)
+    function energy_width_of_coherent_state(system::ClassicalDickeSystem,x::AbstractVector{<:Real}; j::Real)
         ω₀,ω,γ=ClassicalSystems.parameters(system)
         Q,q,P,p=x
         θ=PhaseSpaces.θ_of_QP(Q,P)
@@ -230,8 +240,9 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```
     where ``h_\\text{cl}`` is given by Eq. (5) of Ref. [Pilatowsky2021](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    # Keyword arguments
     - `Q`, `P`, `p`, and `ϵ` are the values of ``Q``, ``P``, ``p``, and ``\\epsilon``, respectively.
     """
     function discriminant_of_q_solution(system::ClassicalDickeSystem; Q::Real,P::Real,p::Real,ϵ::Real)
@@ -257,8 +268,9 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```
     where ``h_\\text{cl}`` is given by Eq. (5) of Ref. [Pilatowsky2021](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    # Keyword arguments
     - `Q`, `P`, `p`, and `ϵ` are values of ``Q``, ``P``, ``p``, and ``\\epsilon``, respectively.
     - `signo` is `+` for ``q_+`` and `-` for ``q_-``
     - If `returnNaNonError` is `true`, then `NaN` is returned if there are no solutions. If it is `false`, and error is raised.
@@ -294,7 +306,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```
     That is, this function returns `+` if `q=x[2] ≈ q_of_ϵ(system;Q=x[1],P=x[3],p=x[4],ϵ=ϵ,signo=+)`
     and returns `-` if `q=x[2] ≈ q_of_ϵ(system;Q=x[1],P=x[3],p=x[4],ϵ=ϵ,signo=-)`.
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `x` is a vector in the form `[Q,q,P,p]`.
     - `ϵ` should be the energy of `x`. If this is not passed, it is computed using [`hamiltonian`](@ref ClassicalDicke.hamiltonian)`(system)(x)`. 
@@ -321,8 +333,9 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```
     Returns the minimum energy ``\\epsilon`` when constraining the system to three fixed values of the coordinates ``Q``, ``q``, ``P``, ``p``.
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    # Keyword arguments
     - You may pass either ``(Q,q,P)`` or ``(q,P,p)``. The other combinanations are not implemented.
 
     This function can be especially useful to draw contours of the available phase space (see [Drawing contours of the available phase space](@ref))
@@ -351,7 +364,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```
     Computes the maximum value of the parameter ``P`` accessible to the system at energy ``\\epsilon``.
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `ϵ` is the scaled energy ``ϵ=E/j``.
     """
@@ -371,7 +384,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```
     Computes the maximum value of the parameter ``Q`` accessible to the system at energy ``\\epsilon``.
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `ϵ` is the scaled energy ``ϵ=E/j``.
     """
@@ -388,7 +401,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
     ```
     Computes the minimum nonnegative value of the parameter ``Q`` accessible to the system at energy ``\\epsilon``.
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `ϵ` is the scaled energy ``ϵ=E/j``.
     """
@@ -491,14 +504,15 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
 
         """
         ```julia
-        function classical_path_random_sampler(system::ClassicalDickeSystem;ϵ::Real,dt::Real=3)
+        function classical_path_random_sampler(system::ClassicalDickeSystem; ϵ::Real, dt::Real=3)
         ```
         This function returns a function `sample()`, which produces random points within the classical
         energy shell at energy `ϵ`. The function `sample()` returns points from a fixed chaotic 
         trajectory picked at random separated by a fixed time interval  `dt`. If the classical dynamics are ergodic, 
         **which only happens in chaotic regions,** this produces random points in the energy shell.
-        # Arguments:
+        # Arguments
         - `system` should be generated with [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+        # Keyword arguments
         - `ϵ` is the scaled energy ``ϵ=E/j`` of the energy shell from where to sample.
         - `dt` is the fixed time interval that separates the points that are returned by `sample()`.
         """
@@ -520,7 +534,7 @@ export q_of_ϵ,q_sign,minimum_ϵ_for,Point,Pointθϕ,Pointθφ,discriminant_of_q
              Q=Q*rand((-1,1))
              u0=ClassicalDicke.Point(system,Q=Q,P=0,p=0,ϵ=ϵ)
              function sample()
-                 u0=ClassicalSystems.integrate(system; t=dt, u₀=u0, save_everystep=false,show_progress=false).u[end]
+                 u0=ClassicalSystems.integrate(system,u0,dt; save_everystep=false,show_progress=false).u[end]
                  if rand((true,false))
                      u0[1]=-u0[1]
                      u0[2]=-u0[2]

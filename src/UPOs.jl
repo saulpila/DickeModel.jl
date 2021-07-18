@@ -2,7 +2,7 @@ module UPOs
 
 export PO,search_in_interval,approximate_period,
         get_period,follow_PO_family_from_period,
-        find_p_zero,integrate_PO,monodromy_method_constant_period,
+        find_p_zero,integrate,monodromy_method_constant_period,
         monodromy_method_constant_energy,po_coordinates,QP,qp,QPp,QPq,mirror_Qq,
         mirror_Pp,scarring_measure,lyapunov,follow_PO_family_from_energy,energy,
         family_A,family_B
@@ -45,7 +45,7 @@ export PO,search_in_interval,approximate_period,
     ```julia
     Base.:(==)(po1::PO,po2::PO;Ttol::Real=1e-5,tol::Real=1e-6)
     ```
-    The comparisson `po1 == po2` returns `true` if `po1` and `po2` represent the same periodic orbit, regardless
+    The comparison `po1 == po2` returns `true` if `po1` and `po2` represent the same periodic orbit, regardless
     of which initial condition they have.
     This is done by evaluating `∈(po1.u,  po2, tol = tol) && abs(po1.T-po2.T) < Ttol`
     """
@@ -82,7 +82,7 @@ export PO,search_in_interval,approximate_period,
             return m*sign(uvar[4]-u[4])
         end
         cb=ContinuousCallback(distance,integrator->distance(integrator.u,integrator.t,integrator),save_positions=(false,false),rootfind=true,interp_points=10,reltol=10^-8,abstol=10^-8)
-        ClassicalSystems.integrate(po.system;t=po.T,u₀=po.u,tol=1e-8,save_everystep=false,callback=cb)
+        ClassicalSystems.integrate(po;tol=1e-8,save_everystep=false,callback=cb)
         return result
     end
     """
@@ -96,16 +96,18 @@ export PO,search_in_interval,approximate_period,
     
     """
     ```julia
-    function integrate_PO(po::PO;tol::Real=1e-16, kargs...)
+    function integrate(po::PO;tol::Real=1e-16, kargs...)
     ```
     Returns an instance of [`OrdinaryDiffEq.ODESolution`](https://diffeq.sciml.ai/dev/basics/solution/), resulting
     from integrating `po.u` from `t = 0` to `t = po.T`. 
+    
     # Arguments
-    - `po` should be an instance of [`PO`](@ref)
-    - `tol` is a real number indicating the precision for the integrator. Defaults to `1e-16`
-    - `kargs` are redirected to [`ClassicalSystems.integrate`](@ref)
+    - `po` should be an instance of [`PO`](@ref).
+    # Keyword arguments
+    - `tol` is a real number indicating the precision for the integrator. Defaults to `1e-16`.
+    - `kargs` are redirected to [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)).
     """
-    integrate_PO(po::PO;tol::Real=1e-16, kargs...)=ClassicalSystems.integrate(po.system;t=po.T,u₀=po.u,tol=tol, kargs...);
+    ClassicalSystems.integrate(po::PO;tol::Real=1e-16, kargs...)=ClassicalSystems.integrate(po.system,po.u,po.T;tol=tol, kargs...);
     
     """
     ```julia
@@ -118,10 +120,11 @@ export PO,search_in_interval,approximate_period,
     along the periodic orbit `po`.
     # Arguments
     - `po` should be an instance of [`PO`](@ref)
-    - `kargs` are redirected to [`integrate_PO`](@ref)
+    # Keyword arguments
+    - `kargs` are redirected to [`integrate`](@ref integrate(::ClassicalSystem,::AbstractVector{<:Real},::Real))
     """
     function action(po::PO;kargs...)
-        us=integrate_PO(po;kargs...).u
+        us=integrate(po;kargs...).u
         return sum(us[i][3]*(us[i][1]-us[i-1][1]) + us[i][4]*(us[i][2]-us[i-1][2]) for i in 2:length(us))
     end
     """
@@ -140,7 +143,8 @@ export PO,search_in_interval,approximate_period,
       in which case the integration is ommited.
     - `f` should be a function with a method `f([Q,q,P,p])`, which returns values that
       may be added together and multiplied by scalars (e.g. numbers or arrays).
-    - `kargs` are redirected to  [`ClassicalSystems.integrate`](@ref).
+    # Keyword arguments
+    - `kargs` are redirected to  [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)).
     """
     function average_over_PO(po::Union{OrdinaryDiffEq.ODESolution,PO},
         f::Function;
@@ -159,7 +163,7 @@ export PO,search_in_interval,approximate_period,
                 end
             end
             cb=FunctionCallingCallback(guardar;func_start = false,func_everystep =true)
-            ClassicalSystems.integrate(po.system;t=po.T,u₀=po.u,tol=tol,save_everystep=false,callback=cb,kargs...)
+            ClassicalSystems.integrate(po;kargs...,tol=tol,save_everystep=false,callback=cb)
         else
             T=po.t[end]-po.t[1]
             for i in 2:length(po.t)
@@ -258,6 +262,7 @@ export PO,search_in_interval,approximate_period,
     # Arguments
     - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model.
+    # Keyword arguments
     - `bound` is a positive real number indicating how close does the evolution has 
       to come back to `u₀`. Defaults to `0.1`.
     - `tol` is the integration tolerance. Not to be confused with `bound`. Defaults to  1e-8.
@@ -297,7 +302,7 @@ export PO,search_in_interval,approximate_period,
             return nothing
         end
         cb=ContinuousCallback((uvar,t,integrator)-> (uvar[4]-u₀[4]),nothing,guardar,save_positions=(false,false),rootfind=true,interp_points=3,reltol=10^-8,abstol=10^-8)
-        t=ClassicalSystems.integrate(system;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=tol).t[end]
+        t=ClassicalSystems.integrate(system,u₀,10000;callback=cb,save_everystep=false,tol=tol).t[end]
         return lastsavet
 
     end
@@ -307,7 +312,7 @@ export PO,search_in_interval,approximate_period,
         T::Real;
         tol::Real=1e-12)
         
-        u₁,M=ClassicalSystems.integrate(system,t=T,u₀=u₀,save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
+        u₁,M=ClassicalSystems.integrate(system,u₀,T;save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
         return u₀-(M-Id)^-1*(u₁-u₀),norm(u₁-u₀)
     end
     function hamiltonian_gradient(system::ClassicalDickeSystem,u::AbstractVector{<:Real})
@@ -318,7 +323,7 @@ export PO,search_in_interval,approximate_period,
     end
 
     function monodromy_method_step_constant_energy(system::ClassicalDickeSystem,u₀::AbstractVector{<:Real},T::Real;tol::Real=1e-12)
-        u₁,M=ClassicalSystems.integrate(system,t=T,u₀=u₀,save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
+        u₁,M=ClassicalSystems.integrate(system,u₀,T;save_everystep=false,get_fundamental_matrix=true,tol=tol).u[end].x
         gradH=hamiltonian_gradient(system,u₁)
         ξ=Float64[0,0,0,1]
         Fu₁=-[-gradH[3],-gradH[4],gradH[1],gradH[2]]
@@ -352,12 +357,13 @@ export PO,search_in_interval,approximate_period,
     - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model, which is used 
       as the starting point to find an orbit.
     - `T` is a positive real number, indicating the desired period.
+    # Keyword arguments
     - `maxiters` is a integer which sets the maximum number of iterations. Defaults
       to `100`.
     - `tol` is a tolerance. If  ``\\|u-u(T)\\|<`` `tol`,
       ``u`` is considered a periodic condition with period `T`. The smaller the tolerance, the
       more iterations are needed to converge. Default is `1e-8`
-    - `inttol` is the tolerance to be passed to [`ClassicalSystems.integrate`](@ref). Default is
+    - `inttol` is the tolerance to be passed to [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)). Default is
       `tol/10`.
     """
     function monodromy_method_constant_period(system::ClassicalDickeSystem,
@@ -399,12 +405,13 @@ export PO,search_in_interval,approximate_period,
     - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model, which is used 
       as the starting point to find an orbit.
     - `T` is a positive real number, which is used as the starting point to find an orbit.
+    # Keyword arguments
     - `maxiters` is a integer which sets the maximum number of iterations. Defaults
       to `100`.
     - `tol` is a tolerance. If  ``\\|u-u(T)\\|<`` `tol`,
       ``u`` is considered a periodic condition with period `T`. The smaller the tolerance, the
       more iterations are needed to converge. Default is `1e-8`
-    - `inttol` is the tolerance to be passed to [`ClassicalSystems.integrate`](@ref). Default is
+    - `inttol` is the tolerance to be passed to [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)). Default is
       `tol/10`.
     - `correct_energy` is a Boolean. As described in  Ref. [Pilatowsky2021](@cite), this algorithm
       only approximately conserves energy. If `correct_energy == true`, the initial condition 
@@ -452,6 +459,7 @@ export PO,search_in_interval,approximate_period,
     # Arguments
     - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
     - `u₀` is a point `[Q,q,P,p]` in the phase space of the Dicke model.
+    # Keyword arguments
     - `tol` is the numerical tolerance.
     - If `negative` is `true`, then the crossing is from positive to negative. Default is `false`.
     """
@@ -475,7 +483,7 @@ export PO,search_in_interval,approximate_period,
                 negguardar,guardar=guardar,negguardar
             end
             cb=ContinuousCallback((uvar,t,integrator)-> (uvar[4]-0),guardar,negguardar,save_positions=(false,false),rootfind=true,interp_points=3,abstol=tol)
-            ClassicalSystems.integrate(system;t=10000,u₀=u₀,callback=cb,save_everystep=false,tol=tol)
+            ClassicalSystems.integrate(system,u₀,10000;callback=cb,save_everystep=false,tol=tol)
             return nu
         catch
             if abs(u₀[4])< tol  #hay un error cuando el punto ya satisface la condicion por juliaDiff
@@ -495,7 +503,7 @@ export PO,search_in_interval,approximate_period,
          system=po.system
          T=po.T
          maximum(log.(abs.(
-            LinearAlgebra.eigvals(ClassicalSystems.integrate(system,u₀=po.u,t=T,
+            LinearAlgebra.eigvals(ClassicalSystems.integrate(po;
                     get_fundamental_matrix=true,save_everystep=false)[end].x[2])
             ))/T)
     end
@@ -521,6 +529,7 @@ export PO,search_in_interval,approximate_period,
     
     # Arguments
     - `po` should be an instance of [`PO`](@ref)
+    # Keyword arguments
     - `step` is the initial size of the perturbations in period, this is decreased and increased
       dynamically (default is `0.1`).
     - `tol` is the tolerance to pass to [`monodromy_method_constant_period`](@ref) (default is `1e-5`).
@@ -624,6 +633,7 @@ export PO,search_in_interval,approximate_period,
     
     # Arguments
     - `po` should be an instance of [`PO`](@ref).
+    # Keyword arguments
     - `step` is the initial size of the perturbations in energy, this is decreased and increased
       dynamically (default is `0.1`). If the orbits seem to suddenly jump, try to decrease this number.
     - `tol` is the tolerance to pass to [`monodromy_method_constant_energy`](@ref) (default is `1e-5`).
@@ -793,6 +803,7 @@ export PO,search_in_interval,approximate_period,
     # Arguments
     - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref ClassicalDicke.ClassicalDickeSystem). 
       The system must be in the supperradiant regime. 
+    # Keyword arguments
     - `kargs...` are redirected to [`follow_PO_family_from_energy`](@ref)
     """
     family_A(system::ClassicalDickeSystem;kargs...)=follow_PO_family_from_energy(PO(system,
@@ -811,6 +822,7 @@ export PO,search_in_interval,approximate_period,
     # Arguments
     - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref ClassicalDicke.ClassicalDickeSystem). 
       The system must be in the supperradiant regime. 
+    # Keyword arguments
     - `kargs...` are redirected to [`follow_PO_family_from_energy`](@ref)
     """
     family_B(system::ClassicalDickeSystem;kargs...)=follow_PO_family_from_energy(PO(system,ClassicalDicke.minimum_energy_point(system,+),2*pi/ClassicalDicke.normal_frequency(system,-));
@@ -827,7 +839,7 @@ export PO,search_in_interval,approximate_period,
     """
     function po_coordinates(coords::AbstractArray{<:Integer}, 
         po::PO;tol::Real=1e-12)
-        u=integrate_PO(po)
+        u=integrate(po)
         us=u.u
         return [Tuple(u[i] for i in coords) for u in us];
     end
@@ -877,6 +889,7 @@ export PO,search_in_interval,approximate_period,
     # Arguments
     - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref). 
     - `po` should be an instance of [`PO`](@ref). 
+    # Keyword arguments
     - `time_integral_tolerance` is the numerical tolerance for the integral in Eq. (15) of Ref. [Pilatowsky2021](@cite). Default is `1e-7`.
     - `phase_space_integral_resolution` is the phase space resolution for the integral in Eq. (16) of Ref. [Pilatowsky2021](@cite), that is, `res` in
       [`EnergyShellProjections.energy_shell_average`](@ref). Default is `0.1`.
@@ -886,7 +899,7 @@ export PO,search_in_interval,approximate_period,
         time_integral_tolerance::Real=1e-7,
         phase_space_integral_resolution::Real=0.1)
         
-        orbit=integrate_PO(po,tol=time_integral_tolerance)
+        orbit=integrate(po,tol=time_integral_tolerance)
         ∫dtHtx(x)=average_over_PO(orbit,u-> DickeBCE.husimi_of_coherent(system,u,x))
         res=phase_space_integral_resolution
         ϵ=energy(po)
@@ -910,6 +923,7 @@ export PO,search_in_interval,approximate_period,
     - `system` should be an instance of [`DickeBCE.QuantumDickeSystem`](@ref). 
     - `quantum_state` should be a vector representing the quantum state  ``\\hat{\\rho}`` in the coherent efficient basis. 
     - `po` should be an instance of [`PO`](@ref) representing ``\\mathcal{O}`` above.
+    # Keyword arguments
     - `Htol` is the tolerance to be passed to [`DickeBCE.husimi`](@ref)
     - `kargs` are redirected to [`overlap_of_tube_with_homogenous_state`](@ref), which gives the denominator in Eq. (17) of Ref. [Pilatowsky2021](@cite).
     """
@@ -923,4 +937,4 @@ export PO,search_in_interval,approximate_period,
     end
     
 end
-                                                                                                                                                                         
+                                                           

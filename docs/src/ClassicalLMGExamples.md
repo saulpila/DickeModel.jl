@@ -1,4 +1,4 @@
-# Examples for ClassicalDicke
+# Examples for ClassicalLMG
 
 ```@setup examples
 push!(LOAD_PATH,"../../src")
@@ -12,7 +12,9 @@ correlator (FOTOC) corresponding the the unstable fixed point ``(Q,P)=(0,0)`` at
 quantum phase transition of the Lipkin-Meshkov-Glick (LMG) model grows eponentially, 
 even though it is a regular system. In this example we calculate such quantity 
 using the Truncated Wigner Approximation (TWA)
-
+```@setup examples
+@info "Starting example: LMG FOTOC"
+```
 ```@example examples
 using DickeModel.TWA, DickeModel.ClassicalLMG
 using Plots
@@ -28,10 +30,11 @@ if !on_github #hide
 end #hide
 FOTOC= sum.(
         variance(systemLMG,
-        observable = [:Q,:P], 
-        N = 5000, 
-        ts = ts, 
-        distribution = W)
+            observable = [:Q,:P], 
+            N = 5000, 
+            ts = ts, 
+            show_progress = false, #hide
+            distribution = W)
     )
 
 plot(ts,FOTOC,

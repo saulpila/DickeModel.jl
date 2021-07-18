@@ -31,6 +31,7 @@ import ProgressMeter
     Note: to type `∫` in Julia, type `\\int` + Tab.
     # Arguments
     - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    # Keyword arguments
     - `ϵ` is a real number corresponding to ``\\epsilon`` above.
     - `Q` and `P` are the ``Q`` and ``P`` coordinates of ``\\mathbf{x}`` above.
     - `f` should be function with signature `f([Q,q,P,p])` that returns values that
@@ -131,10 +132,11 @@ import ProgressMeter
     Returns  a tuple `(Qs, Ps, mat)` where `Qs` and `Ps` are real vectors spanning
     all possible values of ``P`` and ``Q`` with some step `res`, and `mat` 
     is a matrix whose entries are given by
-    `mat[i,j] = `[`∫∫dqdpδϵ(system; ϵ=ϵ, Q=Qs[i], P=P[j], p_res=res,kargs...)`](@ref ∫∫dqdpδϵ)
+    `mat[i,j] = `[`∫∫dqdpδϵ(system; kargs..., ϵ=ϵ, Q=Qs[i], P=P[j], p_res=res)`](@ref ∫∫dqdpδϵ)
 
     # Arguments
     - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    # Keyword arguments
     - `ϵ` is a real number (see arguments for [`∫∫dqdpδϵ`](@ref)).
     - `f` should be function with signature `f([Q,q,P,p])` that returns values that
       may be added together (e.g. numbers, arrays, etc...).
@@ -180,7 +182,7 @@ import ProgressMeter
             f(batch_size=pbatch_size,args...)
         end
         mat= (show_progress ? (parallelize ? addbatchsize(ProgressMeter.progress_pmap) : ProgressMeter.map) : (parallelize ? addbatchsize(Distributed.pmap) : map))(QPs) do (Q,P)
-            ∫∫dqdpδϵ(system;ϵ=ϵ,Q=Q,P=P,f=f,p_res=res,kargs...)
+            ∫∫dqdpδϵ(system;kargs...,ϵ=ϵ,Q=Q,P=P,f=f,p_res=res)
         end
         if show_progress #desrevolvemos
             mat=[mat[ind(revsh[iind(i,j)])...] for i in 1:length(Ps), j in 1:length(Qs)]
@@ -250,7 +252,7 @@ import ProgressMeter
             end
         end
         cache=[gencache() for i in 1:(length(α)+1)]
-        Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(system.classical_system;f=(pt -> _husimi_Renyi_powers(system,pt,states,cache,mix_states;tol=Htol,mix_function=mix_function,αs=α)),res=res,nonvalue=nonvalue,kargs...)
+        Qs,Ps,mat= matrix_QP∫∫dqdpδϵ(system.classical_system;kargs...,f=(pt -> _husimi_Renyi_powers(system,pt,states,cache,mix_states;tol=Htol,mix_function=mix_function,αs=α)),res=res,nonvalue=nonvalue)
         matlist=[[m===nonvalue ? nonvalue : real.(m[i]) for m in mat] for i in  1:(length(α)+1)]
         return Qs,Ps,matlist
     end
@@ -283,6 +285,7 @@ import ProgressMeter
       The states are assummed to be in the efficient coherent basis. In the special case
       that the length of the states is 4, they are instead assumed to be the coordinates
       `[Q,q,P,p]` of a coherent state, and [`husimi_of_coherent`](@ref DickeBCE.husimi_of_coherent) is used. 
+    # Keyword arguments
     - `ϵ`, `Q`, and `P` (which are ``\\epsilon``, ``Q``, and ``P`` above) have to be passed.
     - `Htol` is `tol` for [`DickeBCE.coherent_overlap`](@ref).
     - `res` determines the resolution of the integral, as in [`matrix_QP∫∫dqdpδϵ`](@ref).
@@ -342,7 +345,7 @@ import ProgressMeter
                 resultlength=length(d)
             end
         end
-        Qs,Ps,matlist=  ∫∫dqdpδϵ_Husimi_Renyi_powers(system,states;res=res,Htol=Htol,nonvalue=nonvalue,mix_states=mix_states,mix_function=mix_function,α=α,kargs...)
+        Qs,Ps,matlist=  ∫∫dqdpδϵ_Husimi_Renyi_powers(system,states;kargs...,res=res,Htol=Htol,nonvalue=nonvalue,mix_states=mix_states,mix_function=mix_function,α=α)
         L=rényi_occupation_from_matrices(matlist,nonvalue=nonvalue,α=α)
         if _transposematrixoflistintolistofmatrices
             matproj=[[Union{typeof(nonvalue),Float64}[m===nonvalue ? nonvalue : m[i] for m in matlist[findfirst(α->α==mp,[1;α])]] for mp in matrix_powers] for i in 1:resultlength]
@@ -420,7 +423,7 @@ import ProgressMeter
     """
     function rényi_occupation(args...;kargs...)
         
-        return rényi_occupation_and_proj_husimi_QP_matrix(args...;_transposematrixoflistintolistofmatrices=false,kargs...)[1]
+        return rényi_occupation_and_proj_husimi_QP_matrix(args...; kargs..., _transposematrixoflistintolistofmatrices=false)[1]
     end
     """
     ```julia
@@ -428,12 +431,12 @@ import ProgressMeter
     ```
     Returns only the projection matrices `(Qs,Ps,matrices)` in [`rényi_occupation_and_proj_husimi_QP_matrix`](@ref), same arguments apply, although `α` should not be passed.
     """
-    function proj_husimi_QP_matrix(args...; matrix_powers::Union{AbstractArray{<:Real,1},Real}=1,kargs...)
+    function proj_husimi_QP_matrix(args...;matrix_powers::Union{AbstractArray{<:Real,1},Real}=1,kargs...)
         α = matrix_powers
         if isa(α,AbstractArray)
             α = setdiff(matrix_powers,[1])
         end
-        return rényi_occupation_and_proj_husimi_QP_matrix(args...;α=α, matrix_powers=matrix_powers,kargs...)[2]
+        return rényi_occupation_and_proj_husimi_QP_matrix(args...;kargs...,α=α, matrix_powers=matrix_powers)[2]
     end
     """
     ```julia
@@ -452,6 +455,7 @@ import ProgressMeter
     of `f([Q,q,P,p])`.
     # Arguments
     - `system` should be an instance of [`ClassicalDicke.ClassicalDickeSystem`](@ref).
+    # Keyword arguments
     - `ϵ` is a real number
     - `f` should be function with signature `f([Q,q,P,p])` that returns values that
       may be added together (e.g. numbers, arrays, etc...).

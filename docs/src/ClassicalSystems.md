@@ -7,7 +7,7 @@ ClassicalSystem
 ```
 ## Classical evolution
 ```@docs
-integrate
+integrate(::ClassicalSystem,::AbstractVector{<:Real},::Real)
 ```
 ## Lyapunov exponents
 ```@docs

@@ -2,6 +2,8 @@ push!(LOAD_PATH,"../src/")
 using DickeModel
 using Documenter,Bibliography
 using Distributed
+using Plots
+ENV["GKSwstype"]="nul"
 addprocs(2,exeflags=`--project=docs/`)
 @everywhere push!(LOAD_PATH,"../src/")
 @everywhere using DickeModel
@@ -24,25 +26,24 @@ makedocs(bib,
                     DickeModel.TWA.Weyl,
                     DickeModel.TWA, DickeModel.EnergyShellProjections],
          pages=[
-                "The DickeModel.jl package" => "index.md",
-
-                "Documentation" => [
-                    "ClassicalDicke" => "ClassicalDicke.md",
-                    "DickeBCE" => "DickeBCE.md",
-                    "UPOs" => "UPOs.md",
-                    "TWA" => "TWA.md",
-                    "EnergyShellProjections" => "EnergyShellProjections.md",
-                    "ClassicalLMG" => "ClassicalLMG.md",
-                    "ClassicalSystems" => "ClassicalSystems.md",
-                    "PhaseSpaces" => "PhaseSpaces.md"
-                ],
+                "DickeModel.jl" => "index.md",
                 "Examples" => [
                     "ClassicalDicke" => "ClassicalDickeExamples.md",
                     "DickeBCE (Quantum Dicke)" => "DickeBCEExamples.md",
                     "EnergyShellProjections" => "EnergyShellProjectionsExamples.md",
                     "TWA" => "TWAExamples.md",
+                    "UPOs" => "UPOsExamples.md",
                     "ClassicalLMG" => "ClassicalLMGExamples.md",
-                     "UPOs" => "UPOsExamples.md",
+                ],
+                "Documentation" => [
+                    "ClassicalDicke" => "ClassicalDicke.md",
+                    "DickeBCE" => "DickeBCE.md",
+                    "EnergyShellProjections" => "EnergyShellProjections.md",
+                    "TWA" => "TWA.md",
+                    "UPOs" => "UPOs.md",
+                    "ClassicalLMG" => "ClassicalLMG.md",
+                    "ClassicalSystems" => "ClassicalSystems.md",
+                    "PhaseSpaces" => "PhaseSpaces.md"
                 ],
                 "References" => "references.md"
                ])

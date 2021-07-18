@@ -27,7 +27,7 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     
     This struct may be passed to all functions in this module that require an instance of `ClassicalLMG.ClassicalLMGSystem`,
     as well as functions in other modules that require the abstract [`ClassicalSystems.ClassicalSystem`](@ref), 
-    such as  [`ClassicalSystems.integrate`](@ref).
+    such as  [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)).
     """
     struct ClassicalLMGSystem <: ClassicalSystems.ClassicalSystem
         parameters::Vector{Float64}
@@ -57,7 +57,7 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     Returns a classical Hamiltonian function `h(x)` where `x=[Q,P]`, which is given by
     Eq. (2) of Ref. [Pilatowsky2020](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalLMG.ClassicalLMGSystem`](@ref).
     """
     function hamiltonian(system::ClassicalLMGSystem)
@@ -78,7 +78,7 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     ```
     where ``h_\\text{cl}`` is given by Eq. (2) of Ref. [Pilatowsky2020](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalLMGSystem`](@ref).
     - `Q` and `ϵ` are the values of ``Q`` and ``\\epsilon``, respectively.
     """
@@ -100,8 +100,9 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     ```
     where ``h_\\text{cl}`` is given by Eq. (2) of Ref. [Pilatowsky2020](@cite).
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalLMGSystem`](@ref).
+    # Keyword arguments
     - `Q` and `ϵ` are values of ``Q`` and ``\\epsilon``, respectively.
     - `signo` is `+` for ``P_+`` and `-` for ``P_-``
     - If `returnNaNonError` is `true`, then `NaN` is returned if there are no solutions. If it is `false`, and error is raised.
@@ -131,8 +132,9 @@ export hamiltonian,ClassicalLMGSystem,P_of_ϵ
     Returns the minimum energy ``\\epsilon`` when constraining the system to 
     one fixed value of the coordinates ``Q`` or ``P``.
 
-    # Arguments:
+    # Arguments
     - `system` should be generated with [`ClassicalLMGSystem`](@ref).
+    # Keyword arguments
     - You may pass either ``P`` or ``Q``.
     """
     function minimum_ϵ_for(system::ClassicalLMGSystem;

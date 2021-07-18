@@ -1,4 +1,5 @@
 # DickeModel.TWA
+For examples of usage, go to  [Examples for TWA](@ref).
 ```@meta
 CurrentModule = DickeModel.TWA
 ```

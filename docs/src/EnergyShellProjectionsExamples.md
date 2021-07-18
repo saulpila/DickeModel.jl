@@ -12,8 +12,15 @@ Husimi function and its moments.
 
 ## Projections of eigenstates
 
-We generate a quantum system. The function [`EnergyShellProjections.proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) that 
-we use below uses multiple workers if available, so let us load some as well:
+Let us first consider the projection
+```math
+    \iint \text{d} q\text{d} p \,\delta(h_\text{cl}(Q,q,P,p)-\epsilon_k)\, \mathcal{Q}_{k}(Q,q,P,p)
+```
+of the Husimi function ``\mathcal{Q}_{k}(\mathbf{x}) = \left | \left \langle \mathbf{x} \middle | E_k \right \rangle \right |^2``
+of an eigenstate ``\left | E_k \right \rangle`` into the atomic plane intersected with the energy shell at ``\epsilon_k=E_k/j`` (see Ref. [Pilatowsky2021NatCommun](@cite)).
+We will use the function [`EnergyShellProjections.proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix)
+to compute such quantity. This function is optimized to parallelize using multiple workers if available, so let us load some as well. This is
+done using [`Distributed`](https://docs.julialang.org/en/v1/manual/distributed-computing/#Starting-and-managing-worker-processes).
 ```@example examples
 using DickeModel
 using DickeModel.DickeBCE
@@ -39,8 +46,8 @@ addprocs(2) #we add 2 workers. Add as many as there are cores in your computer.
 end #hide
 nothing; #hide
 ```
-The function [`EnergyShellProjections.proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) will make use
-of all the available workers (you may disable this by passing `parallelize = true`)
+The function [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) will make use
+of all the available workers (you may disable this by passing `parallelize = false`)
 !!! warning 
     The line 
     ```julia 
@@ -48,15 +55,11 @@ of all the available workers (you may disable this by passing `parallelize = tru
     ```
     is necessary to load the module `DickeModel` in all workers. You will get errors if you omit it.
     
-Let us first consider the projection
-```math
-    \iint \text{d} q\text{d} p \,\delta(h_\text{cl}(Q,q,P,p)-\epsilon_k)\, \mathcal{Q}_{k}(Q,q,P,p)
+
+We compute the projection for the eigenstate with `k = 600`.
+```@setup examples
+@info "Starting example: Eigenstate Projection"
 ```
-of the Husimi function ``\mathcal{Q}_{k}(\mathbf{x}) = \left | \left \langle \mathbf{x} \middle | E_k \right \rangle \right |^2``
-of an eigenstate ``\left | E_k \right \rangle`` into the atomic plane intersected with the energy shell at ``\epsilon_k=E_k/j`` (see Ref. [Pilatowsky2021NatCommun](@cite)).
-
-This can be easily plotted using  [`EnergyShellProjections.proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix):
-
 ```@example examples
 k = 600
 state = eigenstates[:,k]  
@@ -78,11 +81,14 @@ savefig("k600stateprojhu.svg");nothing #hide
 ```
 ![](k600stateprojhu.svg)
 
-Moreover, using this function we can plot the projection of the ``\alpha \geq 0``-moments
+Moreover, using the function [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix)  we can plot the projection of the ``\alpha``-moments of the Husimi function, which are given by
 ```math
     \iint \text{d} q\text{d} p \,\delta(h_\text{cl}(\mathbf{x})-\epsilon_k)\, \mathcal{Q}_{k}(\mathbf{x})^\alpha.
 ```
-
+for  ``\alpha\geq 0``. Let us do this for `k = 750` and four value of ``\alpha``, `[0.5,1,2,3,4]`.
+```@setup examples
+@info "Starting example: Husimi powers"
+```
 ```@example examples
 k = 750
 state = eigenstates[:,k]  
@@ -124,10 +130,15 @@ savefig("k700momentsstateprojhu.svg");nothing #hide
 ```
 ![](k700momentsstateprojhu.svg)
 
-The function [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) can also receive multiple
-states as columns in a matrix. Even more, if these states are just vectors of length 4 `[Q,q,P,p]`, the function assumes you want the coherent 
-state centered at `[Q,q,P,p]`. There is an analytical formula for the Husimi function of a coherent state (See [`husimi_of_coherent`](@ref DickeModel.DickeBCE.husimi_of_coherent)), so the coefficients of the coherent state are not even calculated, and the result is much faster:
-
+The function [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) 
+can also receive multiple states as columns in a matrix. Even more, if these states 
+are just vectors of length 4 `[Q,q,P,p]`, the function assumes you want the coherent 
+state centered at `[Q,q,P,p]`. There is an analytical formula for the Husimi function 
+of a coherent state (See [`husimi_of_coherent`](@ref DickeModel.DickeBCE.husimi_of_coherent)), 
+so the coefficients of the coherent state are not even calculated, and the result is much faster:
+```@setup examples
+@info "Starting example: Coherent Heart"
+```
 ```@example examples
 ts = range(-π+0.3, -0.4, length = 30) ∪ range(0.2, π-0.6, length = 20)
 💗(t) = (1.5sin(t)^3,(13cos(t) - 5cos(2t) -2cos(3t) - cos(4t))/10)
@@ -148,13 +159,15 @@ savefig("heartofcoherents.svg");nothing #hide
 ```
 ![](heartofcoherents.svg)
 
-Nota that above, we passed `mix_states = true` to [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix). This tells
-the code to average together all of the
-Husimis of the states (using [`Statistics.mean`](https://docs.julialang.org/en/v1/stdlib/Statistics/#Statistics.mean)).
+Nota that above, we passed `mix_states = true` to [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix).
+This tells the code to average together all of the Husimi functions of the states (using [`Statistics.mean`](https://docs.julialang.org/en/v1/stdlib/Statistics/#Statistics.mean)), that is, you compute the Husimi function of the mixed state.
 You may even pass a  more complicated `mix_function` to add weights (see the documentation of [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) for details). If we had set `mix_states = false` (default), we would have obtained a matrix for each state. 
 
 The fact that [`proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix) may return the projection of multiple 
 states at the same time allows to create really nice animations. We evolve the state using [`DickeBCE.evolve`](@ref DickeModel.DickeBCE.evolve).
+```@setup examples
+@info "Starting example: Husimi animation"
+```
 ```@example examples
 ϵ = -0.5
 x = Point(system.classical_system, Q=1, P=1, p=0, ϵ=ϵ)
@@ -188,16 +201,19 @@ nothing; #hide
 
 !!! tip
     If you want better resolution, you may decrease `res` above. Computation time grows
-    as the inverse cube of `res`. So twice the resolution will increase the computation time
+    as the inverse cube of `res`. For example, doubling the resolution will increase the computation time
     eightfold.
 
 
-## Rényi occupation of random states
+## [Rényi occupations of random states](@id ExampleRenyiOccupationsRandomStates)
 In this example, we construct a set of random states from the Gaussian Orthogonal
 Ensemble (GOE) of Random Matrix Theory in the positive parity sector of the Dicke model 
-using the function [`DickeBCE.random_state`](@ref DickeModel.DickeBCE.random_state). Then we study average Rényi
- Occupation (see Ref. [Villasenor2021](@cite)) using [`EnergyShellProjections.rényi_occupation`](@ref DickeModel.EnergyShellProjections.rényi_occupation).
- 
+using the function [`DickeBCE.random_state`](@ref DickeModel.DickeBCE.random_state).
+Then we study average Rényi Occupation (see Refs. [Pilatowsky2021Identification](@cite) and [Villasenor2021](@cite)) using 
+[`EnergyShellProjections.rényi_occupation`](@ref DickeModel.EnergyShellProjections.rényi_occupation).
+```@setup examples
+@info "Starting example: Renyi occupation of random"
+```
 ```@example examples
 using DickeModel
 using DickeModel.DickeBCE
@@ -248,7 +264,7 @@ plot(αs,av_𝔏αs,
 savefig("randomStatesL.svg");nothing #hide
 ```
 ![](randomStatesL.svg)
-
+The form of this plot is precisely Eq. (18) of Ref. [Pilatowsky2021Identification](@cite). 
 !!! tip
     If you plan to compute both  [`EnergyShellProjections.rényi_occupation`](@ref DickeModel.EnergyShellProjections.rényi_occupation) and
     [`EnergyShellProjections.proj_husimi_QP_matrix`](@ref DickeModel.EnergyShellProjections.proj_husimi_QP_matrix), you should use the 

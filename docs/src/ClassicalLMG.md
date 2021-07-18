@@ -1,4 +1,5 @@
 # DickeModel.ClassicalLMG
+For examples of usage, go to  [Examples for ClassicalLMG](@ref).
 ```@meta
 CurrentModule = DickeModel.ClassicalLMG
 ```

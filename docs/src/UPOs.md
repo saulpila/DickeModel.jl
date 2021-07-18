@@ -1,4 +1,6 @@
 # DickeModel.UPOs
+For examples of usage, go to  [Examples for UPOs](@ref).
+
 ```@meta
 CurrentModule = DickeModel.UPOs
 ```
@@ -11,7 +13,7 @@ Base.in(::AbstractVector{<:Number},::PO)
 ```
 ## Integrals over POs
 ```@docs 
-integrate_PO
+integrate(::PO)
 average_over_PO
 average_over_PO_QP
 average_over_PO_qp

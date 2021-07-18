@@ -7,8 +7,11 @@ using DickeModel
 ```
 
 ## Drawing contours of the available phase space
-We may use the function [`ClassicalDicke.minimum_ϵ_for`](@ref) to draw the contour of the available phase space on the variables
+We may use the function [`ClassicalDicke.minimum_ϵ_for`](@ref) to draw the contour of the available phase space in the variables
 ``(Q,P)``.
+```@setup examples
+@info "Starting example: Countours"
+```
 ```@example examples
 using DickeModel.ClassicalDicke
 using Plots
@@ -22,13 +25,16 @@ savefig("contourQP.svg"); nothing #hide
 ```
 ![](contourQP.svg)
 ## Plotting the density of states
-Here is a plot of the semiclassical density of states
-
+Using [`ClassicalDicke.density_of_states`](@ref), we plot the semiclassical 
+density of states originally calculated in Ref. [Bastarrachea2014](@cite).
+```@setup examples
+@info "Starting example: DoS"
+```
 ```@example examples
 using DickeModel.ClassicalDicke
 using Plots
 system = ClassicalDickeSystem(ω=1, γ=1, ω₀=1)
-ν(ϵ) = density_of_states(system, j=100, ϵ=ϵ)
+ν(ϵ) = density_of_states(system, ϵ; j=100)
 ϵgs = minimum_energy(system)
 plot(ν, ϵgs:0.01:2, xlabel="ϵ", ylabel="Density of States")
 plot!(key=false) #hide
@@ -40,7 +46,12 @@ This is precisely the red line in Fig. A1. of Ref. [Villasenor2020](@cite).
 
 ## Drawing a Poincaré surface
 
-Here is a way to draw a [Poincaré surface](https://en.wikipedia.org/wiki/Poincar%C3%A9_map) for the Dicke model. We use [`ClassicalSystems.integrate`](@ref) to integrate a bunch of initial conditions. Using the [callback system of DifferentialEquations](https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback), we save the points where ``p=0``.
+Using [`ClassicalSystems.integrate`](@ref ClassicalSystems.integrate(::ClassicalSystems.ClassicalSystem,::AbstractVector{<:Real},::Real)), 
+we may evolve initial conditions under the classical Dicke Hamiltonian. In this example we draw a [Poincaré surface](https://en.wikipedia.org/wiki/Poincar%C3%A9_map) for the mixed regime Dicke model, where chaos and regularity coexist.
+We to integrate a bunch of initial conditions, and, using the [callback system of DifferentialEquations](https://diffeq.sciml.ai/stable/features/callback_functions/#DiffEqBase.ContinuousCallback), we save the points where ``p=0``.
+```@setup examples
+@info "Starting example: Poincare"
+```
 ```@example examples
 using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
 using Plots
@@ -61,13 +72,15 @@ callback=ContinuousCallback((x, t, _) -> x[4], #when p=x[4] is 0,
     save; #execute the function save
     save_positions=(false,false), abstol=1e-3)
 ϵ = -1.35
-for Q in minimum_nonnegative_Q_for_ϵ(system,ϵ):0.02:maximum_Q_for_ϵ(system, ϵ) #for a bunch of initial Qs,
+
+# We evolve a bunch of initial conditions with different Q values:
+for Q in minimum_nonnegative_Q_for_ϵ(system,ϵ):0.02:maximum_Q_for_ϵ(system, ϵ) 
         if minimum_ϵ_for(system, P=0, p=0, Q=Q) > ϵ
             continue
         end
         initial_condition = Point(system, ϵ=ϵ, P=0, p=0, Q=Q)
-        integrate(system, u₀=initial_condition,
-            t=10000, callback=callback, save_everystep=false)
+        integrate(system, initial_condition, 10000,
+             callback=callback, save_everystep=false)
         scatter!(pts)
         empty!(pts)
         if !on_github break end #hide
@@ -82,6 +95,18 @@ savefig("poincare_surface.png");nothing #hide
 ## Drawing a Lyapunov exponent map
 
 Let us plot the Lyapunov exponents for the Poincaré map of the previous example.
+The code below is lengthy because it tries to compute as little data as possible.
+Computing Lyapunov exponents is expensive, because one needs to integrate the variational
+system. However, any two points in the same trajectory will share the same Lyapunov exponent, 
+so we may compute the Lyapunov exponent for an initial condition, and all other points that
+it passes through have the same one, so we do not need to compute it again.
+
+This code generates a matrix in the plane ``(p = 0,\epsilon = \text{constant})``, 
+and averages the Lyapunov exponent of all the trajectories that pass through each square
+in the matrix.
+```@setup examples
+@info "Starting example: Lyapunov map"
+```
 ```@example examples
 using DickeModel, DickeModel.ClassicalDicke, DickeModel.ClassicalSystems
 using Plots
@@ -92,27 +117,37 @@ system = ClassicalDickeSystem(ω=0.8, γ=0.8, ω₀=1)
 n_points = 50 #making this greater will make a smoother plot,
               #but it may take time!
 if !on_github n_points = 5 end #hide
-    
+
+#we calculate the bounds
 maxQ = maximum_Q_for_ϵ(system,ϵ)
 minQ = minimum_nonnegative_Q_for_ϵ(system,ϵ) 
 maxP = maximum_P_for_ϵ(system,ϵ) 
+
 Qs = range(minQ, maxQ, length = n_points)
 Ps = range(0, maxP, length = n_points)  #we only compute the top half of 
                           #the plane, and later mirror it
 
 #this matrix will contain the average Lyapunov exponents of the n trajectories 
-#that have passed through that square  or NaN if the point is outside of bounds
-#we make it shared so all workers can use it
-mat_av_lya = [if minimum_ϵ_for(system, P=P, p=0, Q=Q) > ϵ 
-            NaN else 0.0 end 
-                for Q in Qs, P in Ps]
+#that have passed through that square  or NaN if the point is outside of the
+#available phase space.
+mat_av_lya = [
+        if minimum_ϵ_for(system, P=P, p=0, Q=Q) > ϵ 
+            NaN 
+        else 
+            0.0 
+        end 
+    for Q in Qs, P in Ps
+    ]
                 
 #this matrix will contain the count of how many trajectories 
 #have passed through that square.
 mat_counts =zeros(Int,length(Qs),length(Ps))
-pts = Tuple{Float64, Float64}[] #a list of points (Q,P) for temporary storage
+#a list of points (Q,P) to temporarily store the points through 
+# which a given trajectory passes through. 
+pts = Tuple{Float64, Float64}[] 
 
-function save(state) #this function saves (Q,P) to pts if q = q₊ (and not q₋).
+#this function saves (Q,P) to pts if q = q₊ (and not q₋).
+function save(state) 
     if ClassicalDicke.q_sign(system,state.u,ϵ) == + 
         Q,q,P,p = state.u 
         push!(pts, (Q,P))  
@@ -135,7 +170,8 @@ end
 
 #we iterate over the matrix and the values of Q,P
 for ((Q,P),av_lyapunov,count) in zip(Iterators.product(Qs,Ps),mat_av_lya,mat_counts)
-    #if we are out of bounds or we have information on this Lyapunov exponent,
+    # if we are out of the available phase space or we 
+    # already have one trajectory that has passed through this square
     if av_lyapunov===NaN || count > 0 
         continue #we skip
     end
@@ -145,7 +181,6 @@ for ((Q,P),av_lyapunov,count) in zip(Iterators.product(Qs,Ps),mat_av_lya,mat_cou
     empty!(pts)
     push!(pts,(Q,P))
     point  = ClassicalDicke.Point(system, Q=Q, P=P, p=0, ϵ=ϵ)
-
     λ = ClassicalSystems.lyapunov_exponent(system, point,
         verbose = false, #hide
         #decreasing these numbers will produce more precise results but takes more time. 
@@ -156,10 +191,11 @@ for ((Q,P),av_lyapunov,count) in zip(Iterators.product(Qs,Ps),mat_av_lya,mat_cou
     for (mQ,mP) in pts
         #we save the Lyapunov into all of the squares that the trajectory visited.
         iQ,iP = index_of_subinterval(mQ,Qs),index_of_subinterval(abs(mP),Ps)
-        #if we are inside bounds
+        #if we are inside the available phase space
         if mat_av_lya[iQ,iP] !== NaN
             #we update the average
-            mat_av_lya[iQ,iP] = (mat_av_lya[iQ,iP]*mat_counts[iQ,iP] + λ)/(mat_counts[iQ,iP] + 1)  
+            mat_av_lya[iQ,iP] = (mat_av_lya[iQ,iP]*mat_counts[iQ,iP] + λ) /
+                                (mat_counts[iQ,iP] + 1)  
             mat_counts[iQ,iP] += 1 #we update the count
         end
     end

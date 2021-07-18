@@ -1,4 +1,5 @@
 # DickeModel.EnergyShellProjections
+For examples of usage, go to  [Examples for EnergyShellProjections](@ref).
 ```@meta
 CurrentModule = DickeModel.EnergyShellProjections
 ```

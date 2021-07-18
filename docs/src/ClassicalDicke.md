@@ -1,4 +1,5 @@
 # DickeModel.ClassicalDicke
+For examples of usage, go to  [Examples for ClassicalDicke](@ref).
 ```@meta
 CurrentModule = DickeModel.ClassicalDicke
 ```

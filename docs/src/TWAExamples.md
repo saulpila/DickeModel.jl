@@ -1,4 +1,4 @@
-# Examples for TrucatedWingerApproximation 
+# Examples for TWA 
 
 ```@setup examples
 push!(LOAD_PATH,"../../src")
@@ -11,6 +11,9 @@ The module [`DickeModel.TWA`](@ref DickeModel.TWA) is a very powerful tool to st
 of distributions in the phase space.
 
 Let us load the module `DickeModel.TWA`, together with [`Distributed`](https://docs.julialang.org/en/v1/stdlib/Distributed/) which allows parallelization.  
+```@setup examples
+@info "Starting example: TWA"
+```
 ```@example examples
 using Distributed
 using Plots,Plots.PlotMeasures
@@ -31,10 +34,13 @@ of all the available workers.
     is necessary to load the module `DickeModel` in all workers. You will get errors if you omit it.
     
 For our first example, let us consider the Wigner function of a coherent state,
-evolve it classically using the truncated Wigner approximation, and then look at 
-the expected value of the Weyl symbol of the observable ``\hat{j}_z=\hat{J}_z/j`` in time with 
+evolve it classically using the truncated Wigner approximation (see Ref. [Pilatowsky2020](@cite)), and then look at 
+the expected value of the [Weyl symbol](https://en.wikipedia.org/wiki/Wigner%E2%80%93Weyl_transform#The_inverse_map) 
+of the observable ``\hat{j}_z=\hat{J}_z/j`` in time with 
 [`TWA.average`](@ref). Note the usage of [`Weyl.Jz`](@ref DickeModel.TWA.Weyl.Jz).
-
+```@setup examples
+@info "Starting example: TWA jz"
+```
 ```@example examples
 system = ClassicalDickeSystem(ω=1.0, γ=1.0, ω₀=1.0)
 x = Point(system, Q=1, P=1, p=0, ϵ=0.5)
@@ -60,7 +66,9 @@ savefig("average_jz_TWA.svg");nothing #hide
 
 Okay, but we can do more. Let's see how the whole distribution of ``{j}_z``
 evolves classically using [`TWA.calculate_distribution`](@ref).
-
+```@setup examples
+@info "Starting example: jz distribution"
+```
 ```@example examples
 y_axis_values = -1.1:0.01:1.1
 matrix = calculate_distribution(system; 
@@ -84,6 +92,9 @@ and TWA.
 We can chain several computations using [`TWA.mcs_chain`](@ref). 
 For example, let's see the evolution of ``q`` and ``p`` for the same coherent state evolving in time, along with the time-averaged
 distribution in the plane ``q,p``.
+```@setup examples
+@info "Starting example: TWA qp"
+```
 ```@example examples
 qs=-4.3:0.02:4.3
 ps=-2.4:0.02:2.4
@@ -138,6 +149,9 @@ savefig("distribution_qptime_TWA.svg");nothing #hide
 
 The function [`calculate_distribution`](@ref TWA.calculate_distribution) can even
 animate the evolution (with a little help from the wonderful [`@animate` from Plots](https://docs.juliaplots.org/latest/animations/)).
+```@setup examples
+@info "Starting example: TWA qp animation"
+```
 ```@example examples
 N = 1000000
 times = 0:0.1:40
@@ -182,11 +196,13 @@ nothing; #hide
 
 ## Fidelity out-of-time order correlator (FOTOC)
 
-The FOTOC is a quantum equivalent of the classcal Lyapunov exponent. It is just
+The FOTOC is a quantum equivalent of the classical Lyapunov exponent. It is just
 the variance ``\text{var}(Q)+\text{var}(q)+\text{var}(P)+\text{var}(p)`` as a function
 of time. It may be calculated using the TWA. 
 (See Ref. [Pilatowsky2020](@cite) and references therein).
-
+```@setup examples
+@info "Starting example: TWA FOTOC Dicke"
+```
 ```@example examples
 using DickeModel.ClassicalDicke
 using DickeModel.ClassicalSystems
@@ -230,7 +246,9 @@ savefig("FOTOC_TWA.svg");nothing #hide
 We have a semiclassical formula for the energy width of a coherent state, given in App. A of Ref. [Lerma2018](@cite),
 and implemented in [`ClassicalDicke.energy_width_of_coherent_state`](@ref). Let's check
 this formula against the semiclassical local density of states given by Eq. (E.3) of Ref. [Villasenor2020](@cite).
-
+```@setup examples
+@info "Starting example: Semiclassical LDoS"
+```
 ```@example examples
 using DickeModel.ClassicalDicke
 using DickeModel.ClassicalSystems
@@ -258,7 +276,7 @@ if !on_github ϵ_binsize=0.1 end #hide
     x = ClassicalDicke.hamiltonian(system), 
     xs = ϵs)'
 ρ /= sum(ρ)*ϵ_binsize #normalization
-σₓ = energy_width_of_coherent_state(system, x, j)
+σₓ = energy_width_of_coherent_state(system, x; j=j)
 gaussian=Distributions.Normal(ϵₓ, σₓ)
 
 plot(ϵs,ρ, label="∫ w(x) δ(ϵ - h(x)) dx")
