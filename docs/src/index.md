@@ -17,15 +17,8 @@ This package contains numerical methods that allow to efficiently compute proper
 using Pkg
 Pkg.add("DickeModel")
 ```
-!!! note
-    The package is currently under registration in the Julia official registry. While that 
-    goes through, instead use:
-    ```julia
-    using Pkg
-    Pkg.add(PackageSpec(url = "https://github.com/saulpila/DickeModel.jl"))
-    ```
     
-To load the package, use the command:
+To load the package, run
 ```julia
 using DickeModel
 ```
