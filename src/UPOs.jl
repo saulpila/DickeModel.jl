@@ -528,6 +528,9 @@ export PO,search_in_interval,approximate_period,
     but with period `T`. This algorithm applies the function [`monodromy_method_constant_period`](@ref)
     repeatedly, increasing or decreasing the period in small perturbations to reach the target.
     
+    Note that results are cached, so when `po` is returned by calling the function
+    at some period `T`, a second call with the same period will not perform any calculation and will return 
+    `po` again.
     # Arguments
     - `po` should be an instance of [`PO`](@ref)
     # Keyword arguments
@@ -632,6 +635,9 @@ export PO,search_in_interval,approximate_period,
     Returns a function `ϵ -> po1` that returns a PO from the same family as `po`
     but with energy `ϵ`. This algorithm is detailed in App. A.2. of Ref. [Pilatowsky2021](@cite)
     
+    Note that results are cached, so when `po` is returned by calling the function
+    at some energy `ϵ`, a second call with the same energy will not perform any calculation and will return 
+    `po` again.
     # Arguments
     - `po` should be an instance of [`PO`](@ref).
     # Keyword arguments
