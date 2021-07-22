@@ -1,7 +1,7 @@
 name = "DickeModel"
 uuid = "4685f1ab-9fd1-4b8e-ac75-b8abf0894442"
 authors = ["Saúl Pilatowsky-Cameo <saulpila2000@gmail.com>"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
